@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { EFFECT_FILL_ALPHA, MIN_STACK_FOR_COUNT, effectPatternIndex } from "../../lib/effectStyle";
 import { getCellBounds, getEffectCells, getEffectCoverage } from "../../lib/grid";
 import { useLibraryStore } from "../../store/libraryStore";
 import { effectEdgeColor } from "../../theme/contrast";
@@ -20,19 +21,7 @@ interface EffectLayerProps {
   preview: EffectPreview | null;
 }
 
-const FILL_PERCENT = 30;
-// Two overlapping areas already show doubled texture and a darker tint; a number is added from three.
-const MIN_STACK_FOR_COUNT = 3;
 const MIN_PX_FOR_COUNT = 24;
-const PATTERN_COUNT = 3;
-
-/** A stable pick of pattern per definition, so each kind of effect keeps its own texture. */
-function patternIndex(defId: string): number {
-  let h = 0;
-  for (const ch of defId) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return h % PATTERN_COUNT;
-}
-
 function Pattern({ id, kind, color }: { id: string; kind: number; color: string }) {
   return (
     <pattern id={id} width="8" height="8" patternUnits="userSpaceOnUse">
@@ -105,12 +94,12 @@ export default function EffectLayer({ layout, cellSize, hiddenObjectId, preview 
               width,
               height,
               // A real translucent fill, so overlapping areas darken each other.
-              backgroundColor: `color-mix(in srgb, ${effect.color} ${FILL_PERCENT}%, transparent)`,
+              backgroundColor: `color-mix(in srgb, ${effect.color} ${Math.round(EFFECT_FILL_ALPHA * 100)}%, transparent)`,
             }}
           >
             <svg className="absolute inset-0" width={width} height={height}>
               <defs>
-                <Pattern id={patternId} kind={patternIndex(def.id)} color={edge} />
+                <Pattern id={patternId} kind={effectPatternIndex(def.id)} color={edge} />
               </defs>
               <rect width={width} height={height} fill={`url(#${patternId})`} opacity="0.4" />
             </svg>

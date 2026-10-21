@@ -4,6 +4,7 @@ import { selectActiveLayout, useLayoutStore } from "../store/layoutStore";
 import { useLibraryStore } from "../store/libraryStore";
 import BrandMark from "./BrandMark";
 import CommitInput from "./CommitInput";
+import ExportDialog from "./ExportDialog";
 import LayoutsDrawer from "./LayoutsDrawer";
 
 const SIZE_PRESETS = [15, 17, 20, 24, 32];
@@ -23,6 +24,7 @@ const iconProps = {
 export default function TopBar() {
   const layout = useLayoutStore(selectActiveLayout);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const renameLayout = useLayoutStore((s) => s.renameLayout);
   const resizeLayout = useLayoutStore((s) => s.resizeLayout);
   const undo = useLayoutStore((s) => s.undo);
@@ -86,6 +88,13 @@ export default function TopBar() {
             </button>
           </div>
 
+          <button type="button" className="btn btn-secondary" onClick={() => setExportOpen(true)}>
+            <svg {...iconProps}>
+              <path d="M8 2.5v8M5 7.5l3 3 3-3M3 13h10" />
+            </svg>
+            Export
+          </button>
+
           <label className="flex flex-col gap-1">
             <span className="field-label">Name</span>
             <CommitInput
@@ -144,6 +153,7 @@ export default function TopBar() {
         </>
       )}
       {drawerOpen && <LayoutsDrawer onClose={() => setDrawerOpen(false)} />}
+      {exportOpen && <ExportDialog onClose={() => setExportOpen(false)} />}
     </header>
   );
 }

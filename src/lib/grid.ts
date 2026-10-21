@@ -31,11 +31,19 @@ function isInLayout(cell: Cell, layout: FarmLayout): boolean {
   return cell.x >= 0 && cell.y >= 0 && cell.x < layout.width && cell.y < layout.height;
 }
 
+/** Footprint width and height in cells, with width and height swapped at 90 and 270 degrees. */
+export function getFootprintSize(
+  obj: PlacedObject,
+  def: ObjectDefinition,
+): { width: number; height: number } {
+  const swapped = obj.rotation % 180 !== 0;
+  return swapped ? { width: def.height, height: def.width } : { width: def.width, height: def.height };
+}
+
 /** Cells covered by the object's footprint, in absolute grid coordinates. */
 export function getFootprint(obj: PlacedObject, def: ObjectDefinition): Cell[] {
-  const swapped = obj.rotation % 180 !== 0;
-  const [w, h] = swapped ? [def.height, def.width] : [def.width, def.height];
-  return rectCells(obj.x, obj.y, w, h);
+  const { width, height } = getFootprintSize(obj, def);
+  return rectCells(obj.x, obj.y, width, height);
 }
 
 /**

@@ -131,6 +131,16 @@ export function forbiddenPairsNowPassing(tokens: Tokens): string[] {
   }).map(([fg, bg]) => `${fg} on ${bg}`);
 }
 
+// Label colours for text drawn on object fills. Must equal --color-ink-deep and --color-paper
+// (checked in the contrast test) so canvas export and the DOM editor agree.
+export const LABEL_INK = "#2a1616";
+export const LABEL_PAPER = "#fffbf6";
+
+/** The label colour (LABEL_INK or LABEL_PAPER) with the higher contrast on `fill`. */
+export function labelColorFor(fill: string): string {
+  return contrastRatio(LABEL_INK, fill) >= contrastRatio(LABEL_PAPER, fill) ? LABEL_INK : LABEL_PAPER;
+}
+
 /** The label colour a renderer should draw on `fill`: whichever of ink-deep / paper reads better. */
 export function bestLabelColor(tokens: Tokens, fill: string): { token: string; ratio: number } {
   const options = (["ink-deep", "paper"] as const).map((token) => ({

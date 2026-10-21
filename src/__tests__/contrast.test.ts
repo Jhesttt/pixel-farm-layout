@@ -8,6 +8,9 @@ import {
   contrastRatio,
   deltaE,
   forbiddenPairsNowPassing,
+  LABEL_INK,
+  LABEL_PAPER,
+  labelColorFor,
   parseTokens,
 } from "../theme/contrast";
 
@@ -54,5 +57,26 @@ describe("built-in object colours", () => {
 
   it("every object is clearly distinct from the others and from the board", () => {
     expect(report.tooClose).toEqual([]);
+  });
+});
+
+describe("label colours", () => {
+  it("LABEL_INK and LABEL_PAPER match the theme tokens", () => {
+    expect(LABEL_INK).toBe(tokens["ink-deep"]);
+    expect(LABEL_PAPER).toBe(tokens["paper"]);
+  });
+
+  it("picks the more readable colour for every built-in fill", () => {
+    for (const d of BUILT_IN_DEFINITIONS) {
+      const picked = labelColorFor(d.color);
+      const other = picked === LABEL_INK ? LABEL_PAPER : LABEL_INK;
+      expect(contrastRatio(picked, d.color)).toBeGreaterThanOrEqual(contrastRatio(other, d.color));
+      expect(contrastRatio(picked, d.color)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("uses dark text on light fills and light text on dark fills", () => {
+    expect(labelColorFor("#ffffff")).toBe(LABEL_INK);
+    expect(labelColorFor("#000000")).toBe(LABEL_PAPER);
   });
 });

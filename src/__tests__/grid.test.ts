@@ -7,6 +7,7 @@ import {
   getEffectCells,
   getEffectCoverage,
   getFootprint,
+  getFootprintSize,
   getObjectsOutsideSize,
   getOccupiedMap,
   isInBounds,
@@ -511,5 +512,25 @@ describe("getObjectsOutsideSize", () => {
 
   it("does not report objects with an unknown definition", () => {
     expect(ids(4, 4)).not.toContain("d");
+  });
+});
+
+describe("getFootprintSize", () => {
+  it("returns the definition size at 0 and 180 degrees", () => {
+    expect(getFootprintSize(placed("a", fence, 0, 0, 0), fence)).toEqual({ width: 2, height: 1 });
+    expect(getFootprintSize(placed("a", fence, 0, 0, 180), fence)).toEqual({ width: 2, height: 1 });
+  });
+
+  it("swaps width and height at 90 and 270 degrees", () => {
+    expect(getFootprintSize(placed("a", fence, 0, 0, 90), fence)).toEqual({ width: 1, height: 2 });
+    expect(getFootprintSize(placed("a", fence, 0, 0, 270), fence)).toEqual({ width: 1, height: 2 });
+  });
+
+  it("agrees with the number of cells getFootprint returns", () => {
+    for (const rotation of [0, 90, 180, 270] as const) {
+      const obj = placed("a", barn, 0, 0, rotation);
+      const { width, height } = getFootprintSize(obj, barn);
+      expect(getFootprint(obj, barn)).toHaveLength(width * height);
+    }
   });
 });

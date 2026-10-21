@@ -1,8 +1,11 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
+import { sampleObjectsFor } from "../../data/sampleObjects";
 import { useCellSize } from "../../hooks/useCellSize";
 import { selectActiveLayout, useLayoutStore } from "../../store/layoutStore";
+import { useLibraryStore } from "../../store/libraryStore";
 import NoLayoutsState from "../NoLayoutsState";
 import GridLayer from "./GridLayer";
+import ObjectLayer from "./ObjectLayer";
 
 const RULER_SIZE = 24;
 const PADDING = 24; // around the board card
@@ -12,10 +15,18 @@ export default function GridCanvas() {
   const layout = useLayoutStore(selectActiveLayout);
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const definitions = useLibraryStore((s) => s.definitions);
   const cellSize = useCellSize(
     containerRef,
     layout?.width ?? 1,
     RULER_SIZE + CARD_PADDING * 2 + PADDING * 2,
+  );
+
+  // Step 4 only: an empty layout shows hardcoded samples so sizing and rotation can be checked.
+  // Removed in step 5, when objects come from dragging.
+  const objects = useMemo(
+    () => (layout && layout.objects.length === 0 ? sampleObjectsFor(layout, definitions) : (layout?.objects ?? [])),
+    [layout, definitions],
   );
 
   if (!layout) return <NoLayoutsState />;
@@ -50,7 +61,8 @@ export default function GridCanvas() {
                 cellSize={cellSize}
                 rulerSize={RULER_SIZE}
               />
-              {/* EffectLayer, ObjectLayer and DragGhost mount here in later steps */}
+              <ObjectLayer objects={objects} cellSize={cellSize} />
+              {/* EffectLayer and DragGhost mount here in later steps */}
             </div>
           </div>
         </div>

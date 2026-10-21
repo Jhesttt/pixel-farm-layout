@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FIXTURE_DEFINITIONS } from "./fixtures";
 import {
   canPlace,
+  classifyPointer,
   clampGrab,
   clampGridSize,
   cellKey,
@@ -591,5 +592,71 @@ describe("getCellBounds", () => {
   it("matches a full effect rectangle", () => {
     const cells = getEffectCells(placed("s", scarecrow, 7, 7), scarecrow, makeLayout(15, 15));
     expect(getCellBounds(cells)).toEqual({ x: 4, y: 4, width: 7, height: 7 });
+  });
+});
+
+describe("classifyPointer", () => {
+  const grid = { left: 100, top: 100, right: 300, bottom: 300 };
+  const at = (x: number, y: number, view: typeof grid | null = null, margin = 16) =>
+    classifyPointer({ x, y }, grid, view, margin);
+
+  it("is 'over' anywhere inside the grid, including the first cell edge", () => {
+    expect(at(150, 150)).toBe("over");
+    expect(at(100, 100)).toBe("over");
+    expect(at(299, 299)).toBe("over");
+  });
+
+  it("treats the far edge as outside (the box is half-open)", () => {
+    expect(at(300, 150)).toBe("near");
+    expect(at(150, 300)).toBe("near");
+  });
+
+  it("forgives overshooting by up to the margin", () => {
+    expect(at(90, 150)).toBe("near"); // 10px left of the grid
+    expect(at(150, 315)).toBe("near"); // 15px below
+    expect(at(84, 150)).toBe("near"); // exactly at the margin
+    expect(at(310, 310)).toBe("near"); // diagonal corner band
+  });
+
+  it("is 'away' beyond the margin on any side", () => {
+    expect(at(83, 150)).toBe("away");
+    expect(at(150, 83)).toBe("away");
+    expect(at(317, 150)).toBe("away");
+    expect(at(150, 317)).toBe("away");
+    expect(at(0, 0)).toBe("away");
+  });
+
+  it("respects a custom margin", () => {
+    expect(at(80, 150, null, 30)).toBe("near");
+    expect(at(80, 150, null, 10)).toBe("away");
+    expect(at(99, 150, null, 0)).toBe("away");
+  });
+
+  describe("with a scrolling view that clips the grid", () => {
+    // the grid extends below the view (like a tall board under the phone dock)
+    const view = { left: 0, top: 0, right: 400, bottom: 200 };
+
+    it("is 'over' only for the part of the grid that is visible", () => {
+      expect(at(150, 150, view)).toBe("over");
+      expect(at(150, 250, view)).toBe("away"); // inside the grid box but under the dock
+    });
+
+    it("measures the margin from the visible edge, not the hidden grid edge", () => {
+      expect(at(150, 210, view)).toBe("near"); // 10px past the view's bottom
+      expect(at(150, 230, view)).toBe("away");
+    });
+
+    it("is 'away' when none of the grid is visible", () => {
+      const farView = { left: 0, top: 500, right: 400, bottom: 600 };
+      expect(at(150, 150, farView)).toBe("away");
+      expect(at(150, 550, farView)).toBe("away");
+    });
+
+    it("behaves as before when the view contains the whole grid", () => {
+      const big = { left: -100, top: -100, right: 1000, bottom: 1000 };
+      expect(at(150, 150, big)).toBe("over");
+      expect(at(90, 150, big)).toBe("near");
+      expect(at(0, 0, big)).toBe("away");
+    });
   });
 });

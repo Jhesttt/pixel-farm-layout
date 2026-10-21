@@ -220,3 +220,42 @@ export function getCellBounds(cells: Cell[]): { x: number; y: number; width: num
 export function centeredOffset(objectSize: number, effectSize: number): number {
   return 0 - Math.floor((effectSize - objectSize) / 2); // 0 - n, not -n: avoids negative zero
 }
+
+export interface Box {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+const insideBox = (x: number, y: number, b: Box) => x >= b.left && x < b.right && y >= b.top && y < b.bottom;
+
+/**
+ * Where a dragged pointer is relative to the board: "over" it, "near" it (within `margin` px, so
+ * overshooting an edge is forgiven), or "away". The board is the part of the grid that is actually
+ * on screen: the grid box clipped to `view` (the scrolling area that holds it), when given.
+ */
+export function classifyPointer(
+  pointer: { x: number; y: number },
+  grid: Box,
+  view: Box | null,
+  margin: number,
+): "over" | "near" | "away" {
+  const visible: Box = view
+    ? {
+        left: Math.max(grid.left, view.left),
+        top: Math.max(grid.top, view.top),
+        right: Math.min(grid.right, view.right),
+        bottom: Math.min(grid.bottom, view.bottom),
+      }
+    : grid;
+  if (visible.right <= visible.left || visible.bottom <= visible.top) return "away";
+  if (insideBox(pointer.x, pointer.y, visible)) return "over";
+  const expanded: Box = {
+    left: visible.left - margin,
+    top: visible.top - margin,
+    right: visible.right + margin,
+    bottom: visible.bottom + margin,
+  };
+  return insideBox(pointer.x, pointer.y, expanded) ? "near" : "away";
+}

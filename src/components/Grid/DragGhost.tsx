@@ -3,13 +3,14 @@ import type { DragState } from "../../hooks/useGridDrag";
 const BADGE_SIZE = 22;
 
 /**
- * Live preview while dragging. Validity is shown three ways, never by colour alone:
+ * Live preview while dragging. State is shown three ways, never by colour alone:
  * solid sage outline + check badge when it fits; dashed brick outline + hatching + cross badge
- * when it does not (including when it is off the grid).
+ * when it does not; and, for a placed object held away from the board, the same dashed brick
+ * styling with a trash badge and a "Release to delete" label.
  */
 export default function DragGhost({ drag }: { drag: DragState | null }) {
   if (!drag) return null;
-  const { ghost, valid, color, icon } = drag;
+  const { ghost, valid, color, icon, deleting } = drag;
   const iconSize = Math.min(40, Math.min(ghost.width, ghost.height) * 0.5);
 
   return (
@@ -62,9 +63,24 @@ export default function DragGhost({ drag }: { drag: DragState | null }) {
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          {valid ? <path d="m2 6.5 2.7 2.7L10 3.5" /> : <path d="m2.5 2.5 7 7m0-7-7 7" />}
+          {deleting ? (
+            <path d="M2 3.2h8M4.6 3.2V2h2.8v1.2M3.2 3.2l.4 6.3h4.8l.4-6.3" />
+          ) : valid ? (
+            <path d="m2 6.5 2.7 2.7L10 3.5" />
+          ) : (
+            <path d="m2.5 2.5 7 7m0-7-7 7" />
+          )}
         </svg>
       </span>
+
+      {deleting && (
+        <span
+          className="absolute left-1/2 -translate-x-1/2 rounded-full bg-negative px-3 py-1 text-xs font-bold whitespace-nowrap text-paper shadow-soft"
+          style={{ top: ghost.height + 8 }}
+        >
+          Release to delete
+        </span>
+      )}
     </div>
   );
 }

@@ -6,13 +6,16 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
-import { canPlace, clampGrab, getFootprintSize, pointerToCell } from "../lib/grid";
+import { canPlace, classifyPointer, clampGrab, getFootprintSize, pointerToCell } from "../lib/grid";
 import { selectActiveLayout, useLayoutStore } from "../store/layoutStore";
 import { useLibraryStore } from "../store/libraryStore";
 import type { ObjectDefinition, PlacedObject } from "../types";
 
 /** Pointer travel before a press becomes a drag, so plain clicks stay clicks. */
 const DRAG_THRESHOLD_PX = 4;
+
+/** Dragging a placed object this far (or more) off the board deletes it; closer just cancels. */
+export const DELETE_MARGIN_PX = 16;
 
 export interface DragState {
   kind: "palette" | "grid";
@@ -26,6 +29,8 @@ export interface DragState {
   valid: boolean;
   /** Whether the pointer is over the grid (the ghost snaps to cells only then). */
   overGrid: boolean;
+  /** A placed object held away from the board: releasing now deletes it. */
+  deleting: boolean;
   /** Fill and icon to draw on the ghost. */
   color: string;
   icon: string | undefined;
@@ -84,11 +89,11 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
       const probe = probeFor(session);
       const size = getFootprintSize(probe, session.def);
 
-      const overGrid =
-        session.lastX >= rect.left &&
-        session.lastX < rect.right &&
-        session.lastY >= rect.top &&
-        session.lastY < rect.bottom;
+      // The board is the visible part of the grid; the grid can extend under other panels.
+      const scroller = grid.closest("[data-board-scroller]")?.getBoundingClientRect() ?? null;
+      const zone = classifyPointer({ x: session.lastX, y: session.lastY }, rect, scroller, DELETE_MARGIN_PX);
+      const overGrid = zone === "over";
+      const deleting = session.kind === "grid" && zone === "away";
       const cell = pointerToCell(session.lastX, session.lastY, rect, cellSize);
       const x = cell.x - session.grab.dx;
       const y = cell.y - session.grab.dy;
@@ -113,6 +118,7 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
         y,
         valid,
         overGrid,
+        deleting,
         color: session.color,
         icon: session.def.icon,
         ghost: { ...ghost, width: size.width * cellSize, height: size.height * cellSize },
@@ -186,7 +192,9 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
         session.lastY = ev.clientY;
         if (session.active) {
           const result = evaluate(session);
-          if (result?.valid) {
+          if (result?.deleting && session.objectId) {
+            useLayoutStore.getState().removeObjects([session.objectId]);
+          } else if (result?.valid) {
             const store = useLayoutStore.getState();
             const defs = useLibraryStore.getState().definitions;
             if (session.objectId) {

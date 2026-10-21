@@ -58,6 +58,7 @@ export default function GridCanvas({
   return (
     <div
       ref={containerRef}
+      data-board-scroller
       className="order-1 min-h-0 flex-1 overflow-auto md:order-2"
       style={{ padding: PADDING }}
     >

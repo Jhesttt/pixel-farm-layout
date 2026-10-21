@@ -129,7 +129,7 @@ function SelectionPanel({ objects, defsById }: { objects: PlacedObject[]; defsBy
           Delete <Kbd>Del</Kbd>
         </button>
       </div>
-      <p className="text-xs text-ink-soft">Arrow keys nudge the selection one cell.</p>
+      <p className="text-xs text-ink-soft">Arrow keys nudge the selection one cell. Drag an object off the board to delete it.</p>
     </>
   );
 }
@@ -155,7 +155,7 @@ function LayoutPanel({ defsById }: { defsById: Map<string, ObjectDefinition> }) 
     <>
       <header>
         <h2 className="text-xl font-semibold">Layout</h2>
-        <p className="text-ink-soft">Select an object to edit it. Click and drag to move it.</p>
+        <p className="text-ink-soft">Select an object to edit it. Drag it to move it, or off the board to delete it.</p>
       </header>
 
       <fieldset className="flex flex-col gap-2">

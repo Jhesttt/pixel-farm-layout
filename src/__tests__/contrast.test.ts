@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BUILT_IN_DEFINITIONS } from "../data/builtIns";
+import { MARKING_COLORS } from "../data/markingColors";
 import {
   checkObjectColors,
   checkTokenPairs,
@@ -78,5 +79,18 @@ describe("label colours", () => {
   it("uses dark text on light fills and light text on dark fills", () => {
     expect(labelColorFor("#ffffff")).toBe(LABEL_INK);
     expect(labelColorFor("#000000")).toBe(LABEL_PAPER);
+  });
+});
+
+describe("marking colours", () => {
+  it("each keeps a readable label and is distinct from the board and from the others", () => {
+    const board = tokens["board"] as string;
+    for (const [i, c] of MARKING_COLORS.entries()) {
+      expect(contrastRatio(labelColorFor(c.hex), c.hex), c.name).toBeGreaterThanOrEqual(4.5);
+      expect(deltaE(c.hex, board), `${c.name} vs board`).toBeGreaterThanOrEqual(14);
+      for (const other of MARKING_COLORS.slice(i + 1)) {
+        expect(deltaE(c.hex, other.hex), `${c.name} vs ${other.name}`).toBeGreaterThanOrEqual(12);
+      }
+    }
   });
 });

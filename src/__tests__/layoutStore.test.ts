@@ -235,3 +235,143 @@ describe("placeObject and moveObject", () => {
     expect(active().objects).toHaveLength(1);
   });
 });
+
+describe("selection and editing actions", () => {
+  const spot = (defId: string, x: number, y: number, rotation: PlacedObject["rotation"] = 0): Omit<PlacedObject, "id"> => ({
+    defId: `builtin-${defId}`, x, y, rotation, showEffect: true,
+  });
+  const active = () => get().layouts[get().activeLayoutId!]!;
+  const place = (...args: Parameters<typeof spot>) => get().placeObject(spot(...args), defs)!;
+
+  beforeEach(() => {
+    useLayoutStore.setState({ selection: [] });
+  });
+
+  it("setSelection and toggleSelected manage the selected ids", () => {
+    get().setSelection(["a", "b"]);
+    get().toggleSelected("c");
+    expect(get().selection).toEqual(["a", "b", "c"]);
+    get().toggleSelected("a");
+    expect(get().selection).toEqual(["b", "c"]);
+  });
+
+  it("selection is cleared when the active layout changes", () => {
+    const first = get().createLayout("one", 8, 8);
+    get().createLayout("two", 8, 8);
+    get().setSelection(["x"]);
+    get().setActiveLayout(first);
+    expect(get().selection).toEqual([]);
+    get().setSelection(["x"]);
+    get().createLayout("three", 8, 8);
+    expect(get().selection).toEqual([]);
+  });
+
+  it("deleting the active layout clears the selection; deleting another keeps it", () => {
+    const a = get().createLayout("a", 8, 8);
+    const b = get().createLayout("b", 8, 8);
+    get().setSelection(["x"]);
+    get().deleteLayout(a);
+    expect(get().selection).toEqual(["x"]);
+    get().deleteLayout(b);
+    expect(get().selection).toEqual([]);
+  });
+
+  it("removeObjects deletes them and prunes the selection", () => {
+    get().createLayout("a", 8, 8);
+    const a = place("crop", 0, 0);
+    const b = place("crop", 2, 0);
+    const c = place("crop", 4, 0);
+    get().setSelection([a, b, c]);
+    get().removeObjects([a, b]);
+    expect(active().objects.map((o) => o.id)).toEqual([c]);
+    expect(get().selection).toEqual([c]);
+  });
+
+  it("removeObjects ignores ids that are not in the layout", () => {
+    get().createLayout("a", 8, 8);
+    place("crop", 0, 0);
+    const before = active();
+    get().removeObjects(["nope"]);
+    expect(active()).toBe(before);
+  });
+
+  it("resizeLayout drops removed objects from the selection", () => {
+    const id = get().createLayout("a", 16, 16);
+    const keep = place("crop", 0, 0);
+    const gone = place("crop", 14, 14);
+    get().setSelection([keep, gone]);
+    get().resizeLayout(id, 8, 8, defs);
+    expect(get().selection).toEqual([keep]);
+  });
+
+  it("rotateObjects turns the objects and leaves others alone", () => {
+    get().createLayout("a", 8, 8);
+    const a = place("fence", 0, 0);
+    const b = place("fence", 4, 4);
+    get().rotateObjects([a], defs);
+    expect(active().objects.find((o) => o.id === a)?.rotation).toBe(90);
+    expect(active().objects.find((o) => o.id === b)?.rotation).toBe(0);
+  });
+
+  it("rotateObjects shifts an edge object back inside the grid", () => {
+    get().createLayout("a", 4, 4);
+    const id = place("fence", 0, 3);
+    get().rotateObjects([id], defs);
+    expect(active().objects[0]).toMatchObject({ x: 0, y: 2, rotation: 90 });
+  });
+
+  it("nudgeObjects moves the group, or nothing when blocked", () => {
+    get().createLayout("a", 4, 4);
+    const a = place("crop", 2, 0);
+    const b = place("crop", 3, 0);
+    expect(get().nudgeObjects([a, b], 1, 0, defs)).toBe(false);
+    expect(active().objects.map((o) => o.x)).toEqual([2, 3]);
+    expect(get().nudgeObjects([a, b], 0, 1, defs)).toBe(true);
+    expect(active().objects.map((o) => o.y)).toEqual([1, 1]);
+  });
+
+  it("updateObjects sets and clears label and colour, and toggles the effect", () => {
+    get().createLayout("a", 8, 8);
+    const id = place("scarecrow", 1, 1);
+    get().updateObjects([id], { label: "North", colorOverride: "#aabbcc", showEffect: false });
+    expect(active().objects[0]).toMatchObject({ label: "North", colorOverride: "#aabbcc", showEffect: false });
+    get().updateObjects([id], { label: "", colorOverride: undefined });
+    expect(active().objects[0]).not.toHaveProperty("label");
+    expect(active().objects[0]).not.toHaveProperty("colorOverride");
+    expect(active().objects[0]?.showEffect).toBe(false);
+  });
+
+  it("updateObjects edits several objects at once and skips others", () => {
+    get().createLayout("a", 8, 8);
+    const a = place("crop", 0, 0);
+    const b = place("crop", 2, 0);
+    const c = place("crop", 4, 0);
+    get().updateObjects([a, b], { colorOverride: "#112233" });
+    expect(active().objects.map((o) => o.colorOverride)).toEqual(["#112233", "#112233", undefined]);
+    expect(c).toBeTruthy();
+  });
+
+  it("duplicateObjects adds copies, selects them, and keeps the originals", () => {
+    get().createLayout("a", 8, 8);
+    const id = place("crop", 2, 2);
+    const copies = get().duplicateObjects([id], defs);
+    expect(copies).toHaveLength(1);
+    expect(active().objects).toHaveLength(2);
+    expect(get().selection).toEqual(copies);
+    expect(active().objects.find((o) => o.id === copies[0])).toMatchObject({ x: 3, y: 3 });
+  });
+
+  it("duplicateObjects does nothing when there is no room", () => {
+    get().createLayout("a", 4, 4);
+    const id = place("barn", 0, 0);
+    expect(get().duplicateObjects([id], defs)).toEqual([]);
+    expect(active().objects).toHaveLength(1);
+  });
+
+  it("setView merges display toggles and defaults all on", () => {
+    expect(get().view).toEqual({ showGrid: true, showLabels: true, showEffects: true });
+    get().setView({ showGrid: false });
+    expect(get().view).toEqual({ showGrid: false, showLabels: true, showEffects: true });
+    get().setView({ showGrid: true });
+  });
+});

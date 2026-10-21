@@ -1,17 +1,30 @@
 import { nanoid } from "nanoid";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { duplicatedObjects, nudgedObjects, rotateObjects as rotateInLayout } from "../lib/edit";
 import { canPlace, clampGridSize, getObjectsOutsideSize } from "../lib/grid";
 import { persistedLayoutsSchema } from "../lib/schemas";
 import { createSafeStorage, envelopeValidator } from "../lib/storage";
-import type { FarmLayout, ObjectDefinition, PlacedObject } from "../types";
+import type { FarmLayout, ObjectDefinition, PlacedObject, ViewSettings } from "../types";
 
 export const LAYOUTS_STORAGE_KEY = "pfl:layouts:v1";
 const LAYOUTS_VERSION = 1;
 
+/** The fields of a placed object a user edits in the inspector. */
+export type ObjectPatch = Partial<Pick<PlacedObject, "label" | "colorOverride" | "showEffect">>;
+
+export const DEFAULT_VIEW: ViewSettings = { showGrid: true, showLabels: true, showEffects: true };
+
 interface LayoutState {
   layouts: Record<string, FarmLayout>;
   activeLayoutId: string | null;
+  /** Ids of selected objects in the active layout. In memory only. */
+  selection: string[];
+  view: ViewSettings;
+  setSelection: (ids: string[]) => void;
+  /** Adds the id to the selection, or removes it if already selected. */
+  toggleSelected: (id: string) => void;
+  setView: (patch: Partial<ViewSettings>) => void;
   /** Creates a layout, makes it active, and returns its id. */
   createLayout: (name: string, width: number, height: number) => string;
   setActiveLayout: (id: string) => void;
@@ -38,11 +51,25 @@ interface LayoutState {
     defs: ObjectDefinition[],
     rotation?: PlacedObject["rotation"],
   ) => boolean;
+  /** Deletes objects from the active layout and drops them from the selection. */
+  removeObjects: (ids: string[]) => void;
+  /**
+   * Turns each object 90 degrees clockwise. One that would not fit is shifted back inside the grid,
+   * and left alone if it still cannot fit.
+   */
+  rotateObjects: (ids: string[], defs: ObjectDefinition[]) => void;
+  /** Shifts the objects together by whole cells; does nothing unless every one can move. */
+  nudgeObjects: (ids: string[], dx: number, dy: number, defs: ObjectDefinition[]) => boolean;
+  /** Edits label, colour override or the effect toggle. An empty label or undefined colour clears it. */
+  updateObjects: (ids: string[], patch: ObjectPatch) => void;
+  /** Copies the objects to the nearest free spot and selects the copies. Returns their ids. */
+  duplicateObjects: (ids: string[], defs: ObjectDefinition[]) => string[];
 }
 
 interface PersistedLayouts {
   layouts: Record<string, FarmLayout>;
   activeLayoutId: string | null;
+  view: ViewSettings;
 }
 
 function mostRecentlyUpdatedId(layouts: Record<string, FarmLayout>): string | null {
@@ -53,117 +80,196 @@ function mostRecentlyUpdatedId(layouts: Record<string, FarmLayout>): string | nu
   return best?.id ?? null;
 }
 
+/** `layout` with its objects replaced, and updatedAt bumped. */
+function withObjects(layout: FarmLayout, objects: PlacedObject[]): FarmLayout {
+  return { ...layout, objects, updatedAt: Date.now() };
+}
+
 export const useLayoutStore = create<LayoutState>()(
   persist(
-    (set, get) => ({
-      layouts: {},
-      activeLayoutId: null,
-
-      createLayout: (name, width, height) => {
-        const id = nanoid();
-        const now = Date.now();
-        const layout: FarmLayout = {
-          id,
-          name: name.trim() || "Untitled",
-          width: clampGridSize(width),
-          height: clampGridSize(height),
-          objects: [],
-          createdAt: now,
-          updatedAt: now,
-          schemaVersion: 1,
-        };
-        set((s) => ({ layouts: { ...s.layouts, [id]: layout }, activeLayoutId: id }));
-        return id;
-      },
-
-      setActiveLayout: (id) =>
-        set((s) => (id in s.layouts ? { activeLayoutId: id } : s)),
-
-      deleteLayout: (id) =>
-        set((s) => {
-          if (!(id in s.layouts)) return s;
-          const { [id]: _removed, ...layouts } = s.layouts;
-          const activeLayoutId =
-            s.activeLayoutId === id ? mostRecentlyUpdatedId(layouts) : s.activeLayoutId;
-          return { layouts, activeLayoutId };
-        }),
-
-      renameLayout: (id, name) =>
-        set((s) => {
-          const layout = s.layouts[id];
-          const trimmed = name.trim();
-          if (!layout || !trimmed || trimmed === layout.name) return s;
-          return {
-            layouts: { ...s.layouts, [id]: { ...layout, name: trimmed, updatedAt: Date.now() } },
-          };
-        }),
-
-      resizeLayout: (id, width, height, defs) =>
-        set((s) => {
-          const layout = s.layouts[id];
-          if (!layout) return s;
-          const w = clampGridSize(width);
-          const h = clampGridSize(height);
-          if (w === layout.width && h === layout.height) return s;
-          const dropped = new Set(getObjectsOutsideSize(layout, defs, w, h).map((o) => o.id));
-          const resized: FarmLayout = {
-            ...layout,
-            width: w,
-            height: h,
-            objects: layout.objects.filter((o) => !dropped.has(o.id)),
-            updatedAt: Date.now(),
-          };
-          return { layouts: { ...s.layouts, [id]: resized } };
-        }),
-
-      placeObject: (object, defs) => {
-        const layout = selectActiveLayout(get());
-        if (!layout) return null;
-        const placed: PlacedObject = { ...object, id: nanoid() };
-        if (!canPlace(layout, defs, placed)) return null;
+    (set, get) => {
+      /** Replaces the active layout's objects, optionally adjusting the selection too. */
+      const commitObjects = (layout: FarmLayout, objects: PlacedObject[], selection?: string[]) =>
         set((s) => ({
-          layouts: {
-            ...s.layouts,
-            [layout.id]: { ...layout, objects: [...layout.objects, placed], updatedAt: Date.now() },
-          },
+          layouts: { ...s.layouts, [layout.id]: withObjects(layout, objects) },
+          ...(selection ? { selection } : {}),
         }));
-        return placed.id;
-      },
 
-      moveObject: (id, x, y, defs, rotation) => {
-        const layout = selectActiveLayout(get());
-        const current = layout?.objects.find((o) => o.id === id);
-        if (!layout || !current) return false;
-        const moved: PlacedObject = { ...current, x, y, rotation: rotation ?? current.rotation };
-        if (!canPlace(layout, defs, moved, [id])) return false;
-        set((s) => ({
-          layouts: {
-            ...s.layouts,
-            [layout.id]: {
+      return {
+        layouts: {},
+        activeLayoutId: null,
+        selection: [],
+        view: DEFAULT_VIEW,
+
+        setSelection: (ids) => set({ selection: ids }),
+
+        toggleSelected: (id) =>
+          set((s) => ({
+            selection: s.selection.includes(id)
+              ? s.selection.filter((x) => x !== id)
+              : [...s.selection, id],
+          })),
+
+        setView: (patch) => set((s) => ({ view: { ...s.view, ...patch } })),
+
+        createLayout: (name, width, height) => {
+          const id = nanoid();
+          const now = Date.now();
+          const layout: FarmLayout = {
+            id,
+            name: name.trim() || "Untitled",
+            width: clampGridSize(width),
+            height: clampGridSize(height),
+            objects: [],
+            createdAt: now,
+            updatedAt: now,
+            schemaVersion: 1,
+          };
+          set((s) => ({
+            layouts: { ...s.layouts, [id]: layout },
+            activeLayoutId: id,
+            selection: [],
+          }));
+          return id;
+        },
+
+        setActiveLayout: (id) =>
+          set((s) => (id in s.layouts ? { activeLayoutId: id, selection: [] } : s)),
+
+        deleteLayout: (id) =>
+          set((s) => {
+            if (!(id in s.layouts)) return s;
+            const { [id]: _removed, ...layouts } = s.layouts;
+            const wasActive = s.activeLayoutId === id;
+            return {
+              layouts,
+              activeLayoutId: wasActive ? mostRecentlyUpdatedId(layouts) : s.activeLayoutId,
+              selection: wasActive ? [] : s.selection,
+            };
+          }),
+
+        renameLayout: (id, name) =>
+          set((s) => {
+            const layout = s.layouts[id];
+            const trimmed = name.trim();
+            if (!layout || !trimmed || trimmed === layout.name) return s;
+            return {
+              layouts: { ...s.layouts, [id]: { ...layout, name: trimmed, updatedAt: Date.now() } },
+            };
+          }),
+
+        resizeLayout: (id, width, height, defs) =>
+          set((s) => {
+            const layout = s.layouts[id];
+            if (!layout) return s;
+            const w = clampGridSize(width);
+            const h = clampGridSize(height);
+            if (w === layout.width && h === layout.height) return s;
+            const dropped = new Set(getObjectsOutsideSize(layout, defs, w, h).map((o) => o.id));
+            const resized: FarmLayout = {
               ...layout,
-              objects: layout.objects.map((o) => (o.id === id ? moved : o)),
+              width: w,
+              height: h,
+              objects: layout.objects.filter((o) => !dropped.has(o.id)),
               updatedAt: Date.now(),
-            },
-          },
-        }));
-        return true;
-      },
-    }),
+            };
+            return {
+              layouts: { ...s.layouts, [id]: resized },
+              selection: s.selection.filter((sel) => !dropped.has(sel)),
+            };
+          }),
+
+        placeObject: (object, defs) => {
+          const layout = selectActiveLayout(get());
+          if (!layout) return null;
+          const placed: PlacedObject = { ...object, id: nanoid() };
+          if (!canPlace(layout, defs, placed)) return null;
+          commitObjects(layout, [...layout.objects, placed]);
+          return placed.id;
+        },
+
+        moveObject: (id, x, y, defs, rotation) => {
+          const layout = selectActiveLayout(get());
+          const current = layout?.objects.find((o) => o.id === id);
+          if (!layout || !current) return false;
+          const moved: PlacedObject = { ...current, x, y, rotation: rotation ?? current.rotation };
+          if (!canPlace(layout, defs, moved, [id])) return false;
+          commitObjects(layout, layout.objects.map((o) => (o.id === id ? moved : o)));
+          return true;
+        },
+
+        removeObjects: (ids) => {
+          const layout = selectActiveLayout(get());
+          if (!layout || !layout.objects.some((o) => ids.includes(o.id))) return;
+          commitObjects(
+            layout,
+            layout.objects.filter((o) => !ids.includes(o.id)),
+            get().selection.filter((sel) => !ids.includes(sel)),
+          );
+        },
+
+        rotateObjects: (ids, defs) => {
+          const layout = selectActiveLayout(get());
+          if (!layout) return;
+          const changed = rotateInLayout(layout, defs, ids);
+          if (changed.length === 0) return;
+          const byId = new Map(changed.map((o) => [o.id, o]));
+          commitObjects(layout, layout.objects.map((o) => byId.get(o.id) ?? o));
+        },
+
+        nudgeObjects: (ids, dx, dy, defs) => {
+          const layout = selectActiveLayout(get());
+          if (!layout) return false;
+          const moved = nudgedObjects(layout, defs, ids, dx, dy);
+          if (!moved) return false;
+          const byId = new Map(moved.map((o) => [o.id, o]));
+          commitObjects(layout, layout.objects.map((o) => byId.get(o.id) ?? o));
+          return true;
+        },
+
+        updateObjects: (ids, patch) => {
+          const layout = selectActiveLayout(get());
+          if (!layout || !layout.objects.some((o) => ids.includes(o.id))) return;
+          commitObjects(
+            layout,
+            layout.objects.map((o) => {
+              if (!ids.includes(o.id)) return o;
+              const next: PlacedObject = { ...o, ...patch };
+              if (!next.label) delete next.label;
+              if (!next.colorOverride) delete next.colorOverride;
+              return next;
+            }),
+          );
+        },
+
+        duplicateObjects: (ids, defs) => {
+          const layout = selectActiveLayout(get());
+          if (!layout) return [];
+          const copies = duplicatedObjects(layout, defs, ids, nanoid);
+          if (!copies) return [];
+          const copyIds = copies.map((c) => c.id);
+          commitObjects(layout, [...layout.objects, ...copies], copyIds);
+          return copyIds;
+        },
+      };
+    },
     {
       name: LAYOUTS_STORAGE_KEY,
       version: LAYOUTS_VERSION,
       storage: createJSONStorage(() =>
         createSafeStorage({ validate: envelopeValidator(persistedLayoutsSchema, LAYOUTS_VERSION) }),
       ),
-      // selection and history (later steps) stay in memory only
+      // selection and history stay in memory only
       partialize: (s): PersistedLayouts => ({
         layouts: s.layouts,
         activeLayoutId: s.activeLayoutId,
+        view: s.view,
       }),
       // v1 is the first schema. Future versions: switch on `version` here and return the upgraded
       // state, so a schema change never wipes saved layouts.
       migrate: (persisted) => persisted as PersistedLayouts,
-      // Guard against an active id that no longer points at a layout.
+      // Guard against an active id that no longer points at a layout, and default `view` for
+      // saves written before it existed.
       merge: (persisted, current) => {
         const saved = persisted as Partial<PersistedLayouts> | undefined;
         const layouts = saved?.layouts ?? {};
@@ -171,7 +277,7 @@ export const useLayoutStore = create<LayoutState>()(
           saved?.activeLayoutId && saved.activeLayoutId in layouts
             ? saved.activeLayoutId
             : mostRecentlyUpdatedId(layouts);
-        return { ...current, layouts, activeLayoutId };
+        return { ...current, layouts, activeLayoutId, view: { ...DEFAULT_VIEW, ...saved?.view } };
       },
     },
   ),

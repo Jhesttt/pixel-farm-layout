@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
 import { GRID_MAX_SIZE, GRID_MIN_SIZE, clampGridSize, getObjectsOutsideSize } from "../lib/grid";
 import { selectActiveLayout, useLayoutStore } from "../store/layoutStore";
 import { useLibraryStore } from "../store/libraryStore";
 import BrandMark from "./BrandMark";
+import CommitInput from "./CommitInput";
 
 const SIZE_PRESETS = [15, 17, 20, 24, 32];
 const DEFAULT_SIZE = 17;
@@ -18,40 +18,6 @@ const iconProps = {
   strokeLinecap: "round",
   strokeLinejoin: "round",
 } as const;
-
-/** Text input that edits locally and commits on blur / Enter; Escape reverts. */
-function CommitInput({
-  value,
-  onCommit,
-  ...rest
-}: {
-  value: string;
-  onCommit: (value: string) => void;
-} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onBlur" | "onKeyDown">) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
-
-  const commit = () => {
-    if (draft !== value) onCommit(draft);
-    else setDraft(value);
-  };
-
-  return (
-    <input
-      {...rest}
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") e.currentTarget.blur();
-        if (e.key === "Escape") {
-          setDraft(value);
-          e.currentTarget.blur();
-        }
-      }}
-    />
-  );
-}
 
 export default function TopBar() {
   const layout = useLayoutStore(selectActiveLayout);

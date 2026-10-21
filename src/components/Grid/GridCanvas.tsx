@@ -1,4 +1,9 @@
-import { useRef, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import {
+  useRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from "react";
 import { useCellSize } from "../../hooks/useCellSize";
 import { selectActiveLayout, useLayoutStore } from "../../store/layoutStore";
 import NoLayoutsState from "../NoLayoutsState";
@@ -15,10 +20,19 @@ interface GridCanvasProps {
   gridRef: RefObject<HTMLDivElement>;
   hiddenObjectId: string | null;
   onObjectPointerDown: (e: ReactPointerEvent<HTMLElement>, obj: PlacedObject) => void;
+  onObjectActivate: (e: ReactKeyboardEvent<HTMLElement>, obj: PlacedObject) => void;
 }
 
-export default function GridCanvas({ gridRef, hiddenObjectId, onObjectPointerDown }: GridCanvasProps) {
+export default function GridCanvas({
+  gridRef,
+  hiddenObjectId,
+  onObjectPointerDown,
+  onObjectActivate,
+}: GridCanvasProps) {
   const layout = useLayoutStore(selectActiveLayout);
+  const selection = useLayoutStore((s) => s.selection);
+  const view = useLayoutStore((s) => s.view);
+  const setSelection = useLayoutStore((s) => s.setSelection);
   const containerRef = useRef<HTMLDivElement>(null);
   const cellSize = useCellSize(
     containerRef,
@@ -50,18 +64,27 @@ export default function GridCanvas({ gridRef, hiddenObjectId, onObjectPointerDow
               ref={gridRef}
               className="absolute"
               style={{ left: RULER_SIZE, top: RULER_SIZE, width: pixelWidth, height: pixelHeight }}
+              onPointerDown={(e) => {
+                // A press on bare board (not on an object) clears the selection.
+                const onObject = (e.target as HTMLElement).closest("[data-object-id]");
+                if (!onObject && !e.shiftKey && !e.ctrlKey && !e.metaKey) setSelection([]);
+              }}
             >
               <GridLayer
                 width={layout.width}
                 height={layout.height}
                 cellSize={cellSize}
                 rulerSize={RULER_SIZE}
+                showGrid={view.showGrid}
               />
               <ObjectLayer
                 objects={layout.objects}
                 cellSize={cellSize}
+                selectedIds={selection}
+                showLabels={view.showLabels}
                 hiddenObjectId={hiddenObjectId}
                 onObjectPointerDown={onObjectPointerDown}
+                onObjectActivate={onObjectActivate}
               />
               {/* EffectLayer mounts here in step 7 */}
             </div>

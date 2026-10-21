@@ -147,7 +147,7 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
         document.removeEventListener("pointermove", onMove);
         document.removeEventListener("pointerup", onUp);
         document.removeEventListener("pointercancel", finish);
-        document.removeEventListener("keydown", onKey);
+        document.removeEventListener("keydown", onKey, true);
         window.removeEventListener("scroll", onScroll, true);
         try {
           target.releasePointerCapture(session.pointerId);
@@ -189,10 +189,11 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
             if (session.objectId) {
               store.moveObject(session.objectId, result.x, result.y, defs, result.rotation);
             } else {
-              store.placeObject(
+              const id = store.placeObject(
                 { defId: session.def.id, x: result.x, y: result.y, rotation: result.rotation, showEffect: true },
                 defs,
               );
+              if (id) store.setSelection([id]);
             }
           }
         }
@@ -202,9 +203,11 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
       function onKey(ev: KeyboardEvent) {
         if (ev.key === "Escape") {
           ev.preventDefault();
+          ev.stopImmediatePropagation();
           finish();
         } else if ((ev.key === "r" || ev.key === "R") && !ev.repeat && !ev.ctrlKey && !ev.metaKey) {
           ev.preventDefault();
+          ev.stopImmediatePropagation();
           session.rotation = ((session.rotation + 90) % 360) as PlacedObject["rotation"];
           session.grab = clampGrab(session.grab, getFootprintSize(probeFor(session), session.def));
           if (session.active) refresh();
@@ -219,7 +222,8 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
       document.addEventListener("pointermove", onMove);
       document.addEventListener("pointerup", onUp);
       document.addEventListener("pointercancel", finish);
-      document.addEventListener("keydown", onKey);
+      // Capture phase, so Escape and R are consumed here before the selection shortcuts see them.
+      document.addEventListener("keydown", onKey, true);
       window.addEventListener("scroll", onScroll, true);
       teardownRef.current = finish;
     },

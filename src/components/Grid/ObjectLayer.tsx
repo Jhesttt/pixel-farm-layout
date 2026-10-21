@@ -1,4 +1,4 @@
-import { useMemo, type PointerEvent as ReactPointerEvent } from "react";
+import { useMemo, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { getFootprintSize } from "../../lib/grid";
 import { useLibraryStore } from "../../store/libraryStore";
 import { labelColorFor } from "../../theme/contrast";
@@ -7,9 +7,13 @@ import type { ObjectDefinition, PlacedObject } from "../../types";
 interface ObjectLayerProps {
   objects: PlacedObject[];
   cellSize: number;
+  selectedIds: string[];
+  showLabels: boolean;
   /** An object being dragged: kept mounted (so pointer capture survives) but invisible. */
   hiddenObjectId?: string | null;
   onObjectPointerDown?: (e: ReactPointerEvent<HTMLElement>, obj: PlacedObject) => void;
+  /** Keyboard activation (Enter / Space) of an object. */
+  onObjectActivate?: (e: ReactKeyboardEvent<HTMLElement>, obj: PlacedObject) => void;
 }
 
 const MIN_PX_FOR_ICON = 20;
@@ -25,8 +29,11 @@ function describe(obj: PlacedObject, def: ObjectDefinition): string {
 export default function ObjectLayer({
   objects,
   cellSize,
+  selectedIds,
+  showLabels,
   hiddenObjectId = null,
   onObjectPointerDown,
+  onObjectActivate,
 }: ObjectLayerProps) {
   const definitions = useLibraryStore((s) => s.definitions);
   const defsById = useMemo(() => new Map(definitions.map((d) => [d.id, d])), [definitions]);
@@ -41,16 +48,24 @@ export default function ObjectLayer({
         const pxW = width * cellSize;
         const pxH = height * cellSize;
         const fill = obj.colorOverride ?? def.color;
+        const selected = selectedIds.includes(obj.id);
         const showIcon = def.icon !== undefined && Math.min(pxW, pxH) >= MIN_PX_FOR_ICON;
-        const showLabel = obj.label !== undefined && obj.label !== "" && pxW >= MIN_PX_FOR_LABEL;
+        const showLabel =
+          showLabels && obj.label !== undefined && obj.label !== "" && pxW >= MIN_PX_FOR_LABEL;
 
         return (
           <div
             key={obj.id}
-            role="img"
+            data-object-id={obj.id}
+            role="button"
+            tabIndex={0}
+            aria-pressed={selected}
             aria-label={describe(obj, def)}
-            className="absolute flex cursor-grab touch-none flex-col items-center justify-center overflow-hidden rounded-[3px] ring-2 ring-inset ring-ink-deep/70 select-none"
+            className={`absolute flex cursor-grab touch-none flex-col items-center justify-center overflow-hidden rounded-[3px] ring-2 ring-inset ring-ink-deep/70 select-none ${
+              selected ? "z-10 outline-[3px] outline-offset-2 outline-primary" : ""
+            }`}
             onPointerDown={onObjectPointerDown && ((e) => onObjectPointerDown(e, obj))}
+            onKeyDown={onObjectActivate && ((e) => onObjectActivate(e, obj))}
             style={{
               left: obj.x * cellSize,
               top: obj.y * cellSize,

@@ -45,3 +45,10 @@ export interface FarmLayout {
   updatedAt: number;
   schemaVersion: 1;
 }
+
+// Editor display toggles shared by every layout (not part of a saved layout).
+export interface ViewSettings {
+  showGrid: boolean;
+  showLabels: boolean;
+  showEffects: boolean;
+}

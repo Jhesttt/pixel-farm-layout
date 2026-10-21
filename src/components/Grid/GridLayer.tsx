@@ -4,6 +4,7 @@ interface GridLayerProps {
   cellSize: number;
   /** Space reserved outside the grid on the top and left for the coordinate labels. */
   rulerSize: number;
+  showGrid: boolean;
 }
 
 const MAJOR_EVERY = 5;
@@ -14,7 +15,7 @@ const range = (n: number) => Array.from({ length: n }, (_, i) => i);
  * The board: a parchment ground with cell lines (every fifth one stronger, to count cells at a
  * glance) and coordinates on the top and left edges.
  */
-export default function GridLayer({ width, height, cellSize, rulerSize }: GridLayerProps) {
+export default function GridLayer({ width, height, cellSize, rulerSize, showGrid }: GridLayerProps) {
   const pixelWidth = width * cellSize;
   const pixelHeight = height * cellSize;
 
@@ -49,8 +50,8 @@ export default function GridLayer({ width, height, cellSize, rulerSize }: GridLa
           strokeWidth={1}
           shapeRendering="crispEdges"
         >
-          <path d={minorPath} className="text-grid-line" stroke="currentColor" />
-          <path d={majorPath} className="text-grid-line-major" stroke="currentColor" />
+          {showGrid && <path d={minorPath} className="text-grid-line" stroke="currentColor" />}
+          {showGrid && <path d={majorPath} className="text-grid-line-major" stroke="currentColor" />}
         </svg>
       </div>
       <div aria-hidden className="pointer-events-none text-[11px] font-semibold text-ink-soft tabular-nums select-none">

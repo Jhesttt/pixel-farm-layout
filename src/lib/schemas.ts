@@ -5,6 +5,7 @@ import type {
   FarmLayout,
   ObjectDefinition,
   PlacedObject,
+  ViewSettings,
 } from "../types";
 
 import { GRID_MAX_SIZE, GRID_MIN_SIZE } from "./grid";
@@ -60,11 +61,19 @@ export const farmLayoutSchema = z.object({
   schemaVersion: z.literal(1),
 });
 
+export const viewSettingsSchema = z.object({
+  showGrid: z.boolean(),
+  showLabels: z.boolean(),
+  showEffects: z.boolean(),
+});
+
 // Shape of what zustand `persist` writes to LocalStorage.
 export const persistedLayoutsSchema = z.object({
   state: z.object({
     layouts: z.record(z.string(), farmLayoutSchema),
     activeLayoutId: z.string().nullable(),
+    // Added after the first release of schema v1; absent in older saves and defaulted on load.
+    view: viewSettingsSchema.optional(),
   }),
   version: z.number(),
 });
@@ -83,3 +92,4 @@ assertSchemaMatchesType<Equal<z.infer<typeof effectDefinitionSchema>, EffectDefi
 assertSchemaMatchesType<Equal<z.infer<typeof objectDefinitionSchema>, ObjectDefinition>>();
 assertSchemaMatchesType<Equal<z.infer<typeof placedObjectSchema>, PlacedObject>>();
 assertSchemaMatchesType<Equal<z.infer<typeof farmLayoutSchema>, FarmLayout>>();
+assertSchemaMatchesType<Equal<z.infer<typeof viewSettingsSchema>, ViewSettings>>();

@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import DragGhost from "./components/Grid/DragGhost";
 import GridCanvas from "./components/Grid/GridCanvas";
+import Inspector from "./components/Inspector/Inspector";
 import Palette from "./components/Palette/Palette";
 import { useGridDrag } from "./hooks/useGridDrag";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import TopBar from "./components/TopBar";
 import { onStorageError, type StorageErrorEvent } from "./lib/storage";
 import { useLayoutStore } from "./store/layoutStore";
+import type { PlacedObject } from "./types";
 
 const FIRST_RUN_SIZE = 17;
 
@@ -52,6 +55,27 @@ function StorageToast() {
 function Workspace() {
   const gridRef = useRef<HTMLDivElement>(null);
   const { drag, startPaletteDrag, startObjectDrag } = useGridDrag(gridRef);
+  useKeyboardShortcuts();
+
+  // Pressing an object selects it (Shift/Ctrl/Cmd toggles it in or out), then may start a drag.
+  const onObjectPointerDown = (e: ReactPointerEvent<HTMLElement>, obj: PlacedObject) => {
+    const { setSelection, toggleSelected } = useLayoutStore.getState();
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      toggleSelected(obj.id);
+      return;
+    }
+    setSelection([obj.id]);
+    startObjectDrag(e, obj);
+  };
+
+  const onObjectActivate = (e: ReactKeyboardEvent<HTMLElement>, obj: PlacedObject) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    const { setSelection, toggleSelected } = useLayoutStore.getState();
+    if (e.shiftKey || e.ctrlKey || e.metaKey) toggleSelected(obj.id);
+    else setSelection([obj.id]);
+  };
 
   return (
     <main className="flex min-h-0 flex-1 flex-col md:flex-row">
@@ -59,8 +83,10 @@ function Workspace() {
       <GridCanvas
         gridRef={gridRef}
         hiddenObjectId={drag?.objectId ?? null}
-        onObjectPointerDown={startObjectDrag}
+        onObjectPointerDown={onObjectPointerDown}
+        onObjectActivate={onObjectActivate}
       />
+      <Inspector />
       <DragGhost drag={drag} />
     </main>
   );

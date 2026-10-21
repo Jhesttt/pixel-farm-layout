@@ -54,6 +54,10 @@ interface LayoutState {
   /** Creates a layout, makes it active, and returns its id. */
   createLayout: (name: string, width: number, height: number) => string;
   setActiveLayout: (id: string) => void;
+  /** Copies a layout as "<name> copy", makes the copy active, and returns its id. */
+  duplicateLayout: (id: string) => string | null;
+  /** Adds already-prepared layouts (fresh ids; see `prepareImport`) and makes the first active. */
+  addLayouts: (layouts: FarmLayout[]) => void;
   deleteLayout: (id: string) => void;
   renameLayout: (id: string, name: string) => void;
   /**
@@ -219,6 +223,38 @@ export const useLayoutStore = create<LayoutState>()(
           set((s) =>
             id in s.layouts ? { activeLayoutId: id, selection: [], history: EMPTY_HISTORY } : s,
           ),
+
+        duplicateLayout: (id) => {
+          const source = get().layouts[id];
+          if (!source) return null;
+          const copyId = nanoid();
+          const now = Date.now();
+          const copy: FarmLayout = {
+            ...source,
+            id: copyId,
+            name: `${source.name} copy`,
+            objects: source.objects.map((o) => ({ ...o })),
+            createdAt: now,
+            updatedAt: now,
+          };
+          set((s) => ({
+            layouts: { ...s.layouts, [copyId]: copy },
+            activeLayoutId: copyId,
+            selection: [],
+            history: EMPTY_HISTORY,
+          }));
+          return copyId;
+        },
+
+        addLayouts: (layouts) => {
+          if (layouts.length === 0) return;
+          set((s) => ({
+            layouts: { ...s.layouts, ...Object.fromEntries(layouts.map((l) => [l.id, l])) },
+            activeLayoutId: layouts[0]?.id ?? s.activeLayoutId,
+            selection: [],
+            history: EMPTY_HISTORY,
+          }));
+        },
 
         deleteLayout: (id) =>
           set((s) => {

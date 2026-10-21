@@ -19,6 +19,11 @@ interface LibraryState {
   deleteDefinition: (id: string) => void;
   /** Restores every built-in to its seed values (re-adding deleted ones); custom definitions stay. */
   resetBuiltIns: () => void;
+  /**
+   * Adds definitions (from an imported file) whose ids are not already here; existing ones are kept.
+   * Only genuine built-in ids stay marked built-in. Returns how many were added.
+   */
+  mergeDefinitions: (incoming: ObjectDefinition[]) => number;
 }
 
 interface PersistedLibrary {
@@ -27,7 +32,7 @@ interface PersistedLibrary {
 
 export const useLibraryStore = create<LibraryState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       definitions: BUILT_IN_DEFINITIONS,
 
       addDefinition: (def) => {
@@ -52,6 +57,15 @@ export const useLibraryStore = create<LibraryState>()(
         set((s) => ({ definitions: s.definitions.filter((d) => d.id !== id) })),
 
       resetBuiltIns: () => set((s) => ({ definitions: withBuiltInsReset(s.definitions) })),
+
+      mergeDefinitions: (incoming) => {
+        const have = new Set(get().definitions.map((d) => d.id));
+        const fresh = incoming
+          .filter((d) => !have.has(d.id))
+          .map((d) => ({ ...d, builtIn: BUILT_IN_DEFINITIONS.some((b) => b.id === d.id) }));
+        if (fresh.length > 0) set((s) => ({ definitions: [...s.definitions, ...fresh] }));
+        return fresh.length;
+      },
     }),
     {
       name: LIBRARY_STORAGE_KEY,

@@ -1,11 +1,12 @@
+import { useState } from "react";
 import { GRID_MAX_SIZE, GRID_MIN_SIZE, clampGridSize, getObjectsOutsideSize } from "../lib/grid";
 import { selectActiveLayout, useLayoutStore } from "../store/layoutStore";
 import { useLibraryStore } from "../store/libraryStore";
 import BrandMark from "./BrandMark";
 import CommitInput from "./CommitInput";
+import LayoutsDrawer from "./LayoutsDrawer";
 
 const SIZE_PRESETS = [15, 17, 20, 24, 32];
-const DEFAULT_SIZE = 17;
 
 const iconProps = {
   "aria-hidden": true,
@@ -21,10 +22,7 @@ const iconProps = {
 
 export default function TopBar() {
   const layout = useLayoutStore(selectActiveLayout);
-  const layouts = useLayoutStore((s) => s.layouts);
-  const createLayout = useLayoutStore((s) => s.createLayout);
-  const setActiveLayout = useLayoutStore((s) => s.setActiveLayout);
-  const deleteLayout = useLayoutStore((s) => s.deleteLayout);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const renameLayout = useLayoutStore((s) => s.renameLayout);
   const resizeLayout = useLayoutStore((s) => s.resizeLayout);
   const undo = useLayoutStore((s) => s.undo);
@@ -52,7 +50,6 @@ export default function TopBar() {
     requestResize(side === "width" ? n : layout.width, side === "height" ? n : layout.height);
   };
 
-  const sortedLayouts = Object.values(layouts).sort((a, b) => b.updatedAt - a.updatedAt);
   const presetValue =
     layout && layout.width === layout.height && SIZE_PRESETS.includes(layout.width)
       ? String(layout.width)
@@ -65,52 +62,12 @@ export default function TopBar() {
         <h1 className="text-2xl leading-none font-semibold text-ink">Pixel Farm</h1>
       </div>
 
-      {/* Temporary switcher until the LayoutsDrawer (step 10) */}
-      <div className="flex flex-wrap items-end gap-2">
-        {sortedLayouts.length > 0 && (
-          <label className="flex flex-col gap-1">
-            <span className="field-label">Layout</span>
-            <select
-              aria-label="Saved layouts"
-              className="field min-w-44"
-              value={layout?.id ?? ""}
-              onChange={(e) => setActiveLayout(e.target.value)}
-            >
-              {sortedLayouts.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name} ({l.width}x{l.height})
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => createLayout(`Farm ${sortedLayouts.length + 1}`, DEFAULT_SIZE, DEFAULT_SIZE)}
-        >
-          <svg {...iconProps}>
-            <path d="M8 3v10M3 8h10" />
-          </svg>
-          New layout
-        </button>
-        {layout && (
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={() => {
-              if (window.confirm(`Delete "${layout.name}"? This cannot be undone.`)) {
-                deleteLayout(layout.id);
-              }
-            }}
-          >
-            <svg {...iconProps}>
-              <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8h5.8l.6-8" />
-            </svg>
-            Delete
-          </button>
-        )}
-      </div>
+      <button type="button" className="btn btn-secondary" onClick={() => setDrawerOpen(true)}>
+        <svg {...iconProps}>
+          <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" />
+        </svg>
+        Layouts
+      </button>
 
       {layout && (
         <>
@@ -186,6 +143,7 @@ export default function TopBar() {
           </div>
         </>
       )}
+      {drawerOpen && <LayoutsDrawer onClose={() => setDrawerOpen(false)} />}
     </header>
   );
 }

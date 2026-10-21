@@ -27,6 +27,10 @@ export default function TopBar() {
   const deleteLayout = useLayoutStore((s) => s.deleteLayout);
   const renameLayout = useLayoutStore((s) => s.renameLayout);
   const resizeLayout = useLayoutStore((s) => s.resizeLayout);
+  const undo = useLayoutStore((s) => s.undo);
+  const redo = useLayoutStore((s) => s.redo);
+  const canUndo = useLayoutStore((s) => s.history.past.length > 0);
+  const canRedo = useLayoutStore((s) => s.history.future.length > 0);
   const definitions = useLibraryStore((s) => s.definitions);
 
   const requestResize = (width: number, height: number) => {
@@ -110,6 +114,21 @@ export default function TopBar() {
 
       {layout && (
         <>
+          <div role="group" aria-label="History" className="flex gap-2">
+            <button type="button" className="btn btn-secondary" disabled={!canUndo} title="Undo (Ctrl+Z)" onClick={undo}>
+              <svg {...iconProps}>
+                <path d="M3.5 6.5h6a3.5 3.5 0 0 1 0 7H6M3.5 6.5l3-3M3.5 6.5l3 3" />
+              </svg>
+              Undo
+            </button>
+            <button type="button" className="btn btn-secondary" disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" onClick={redo}>
+              Redo
+              <svg {...iconProps}>
+                <path d="M12.5 6.5h-6a3.5 3.5 0 0 0 0 7H10M12.5 6.5l-3-3M12.5 6.5l-3 3" />
+              </svg>
+            </button>
+          </div>
+
           <label className="flex flex-col gap-1">
             <span className="field-label">Name</span>
             <CommitInput

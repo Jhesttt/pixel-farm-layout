@@ -20,12 +20,33 @@ export type ObjectPatch = Partial<Pick<PlacedObject, "label" | "colorOverride" |
 
 export const DEFAULT_VIEW: ViewSettings = { showGrid: true, showLabels: true, showEffects: true };
 
+export const HISTORY_LIMIT = 50;
+
+/** Snapshots of the active layout. Oldest first in `past`, nearest first in `future`. */
+export interface History {
+  past: FarmLayout[];
+  future: FarmLayout[];
+}
+
+const EMPTY_HISTORY: History = { past: [], future: [] };
+
 interface LayoutState {
   layouts: Record<string, FarmLayout>;
   activeLayoutId: string | null;
   /** Ids of selected objects in the active layout. In memory only. */
   selection: string[];
+  /** Undo and redo snapshots of the active layout, capped at HISTORY_LIMIT. In memory only. */
+  history: History;
   view: ViewSettings;
+  /** Steps the active layout back to its previous snapshot, if any. */
+  undo: () => void;
+  /** Re-applies the last undone change, if any. */
+  redo: () => void;
+  /**
+   * Forgets undo and redo. Used when a definition is deleted or resized, because older snapshots
+   * could then hold objects that no longer fit.
+   */
+  clearHistory: () => void;
   setSelection: (ids: string[]) => void;
   /** Adds the id to the selection, or removes it if already selected. */
   toggleSelected: (id: string) => void;
@@ -97,21 +118,69 @@ function withObjects(layout: FarmLayout, objects: PlacedObject[]): FarmLayout {
   return { ...layout, objects, updatedAt: Date.now() };
 }
 
+/** History after a new change to the active layout: `previous` joins the past, the future is dropped. */
+function recorded(history: History, previous: FarmLayout): History {
+  return { past: [...history.past, previous].slice(-HISTORY_LIMIT), future: [] };
+}
+
+function sameObjects(a: PlacedObject[], b: PlacedObject[]): boolean {
+  return a.length === b.length && a.every((o, i) => o === b[i] || JSON.stringify(o) === JSON.stringify(b[i]));
+}
+
 export const useLayoutStore = create<LayoutState>()(
   persist(
     (set, get) => {
-      /** Replaces the active layout's objects, optionally adjusting the selection too. */
+      /**
+       * Replaces the active layout's objects and records the change for undo, optionally adjusting
+       * the selection too. A change that leaves the objects as they were is ignored.
+       */
       const commitObjects = (layout: FarmLayout, objects: PlacedObject[], selection?: string[]) =>
-        set((s) => ({
-          layouts: { ...s.layouts, [layout.id]: withObjects(layout, objects) },
-          ...(selection ? { selection } : {}),
-        }));
+        set((s) => {
+          if (sameObjects(objects, layout.objects)) return selection ? { selection } : s;
+          return {
+            layouts: { ...s.layouts, [layout.id]: withObjects(layout, objects) },
+            history: recorded(s.history, layout),
+            ...(selection ? { selection } : {}),
+          };
+        });
+
+      /** Moves the active layout to `target`, keeping only the selected ids that still exist in it. */
+      const travel = (s: LayoutState, target: FarmLayout, history: History) => ({
+        layouts: { ...s.layouts, [target.id]: { ...target, updatedAt: Date.now() } },
+        history,
+        selection: s.selection.filter((id) => target.objects.some((o) => o.id === id)),
+      });
 
       return {
         layouts: {},
         activeLayoutId: null,
         selection: [],
+        history: EMPTY_HISTORY,
         view: DEFAULT_VIEW,
+
+        undo: () =>
+          set((s) => {
+            const current = selectActiveLayout(s);
+            const previous = s.history.past.at(-1);
+            if (!current || !previous || previous.id !== current.id) return s;
+            return travel(s, previous, {
+              past: s.history.past.slice(0, -1),
+              future: [current, ...s.history.future].slice(0, HISTORY_LIMIT),
+            });
+          }),
+
+        redo: () =>
+          set((s) => {
+            const current = selectActiveLayout(s);
+            const next = s.history.future[0];
+            if (!current || !next || next.id !== current.id) return s;
+            return travel(s, next, {
+              past: [...s.history.past, current].slice(-HISTORY_LIMIT),
+              future: s.history.future.slice(1),
+            });
+          }),
+
+        clearHistory: () => set((s) => (s.history === EMPTY_HISTORY ? s : { history: EMPTY_HISTORY })),
 
         setSelection: (ids) => set({ selection: ids }),
 
@@ -141,12 +210,15 @@ export const useLayoutStore = create<LayoutState>()(
             layouts: { ...s.layouts, [id]: layout },
             activeLayoutId: id,
             selection: [],
+            history: EMPTY_HISTORY,
           }));
           return id;
         },
 
         setActiveLayout: (id) =>
-          set((s) => (id in s.layouts ? { activeLayoutId: id, selection: [] } : s)),
+          set((s) =>
+            id in s.layouts ? { activeLayoutId: id, selection: [], history: EMPTY_HISTORY } : s,
+          ),
 
         deleteLayout: (id) =>
           set((s) => {
@@ -157,6 +229,7 @@ export const useLayoutStore = create<LayoutState>()(
               layouts,
               activeLayoutId: wasActive ? mostRecentlyUpdatedId(layouts) : s.activeLayoutId,
               selection: wasActive ? [] : s.selection,
+              history: wasActive ? EMPTY_HISTORY : s.history,
             };
           }),
 
@@ -167,6 +240,7 @@ export const useLayoutStore = create<LayoutState>()(
             if (!layout || !trimmed || trimmed === layout.name) return s;
             return {
               layouts: { ...s.layouts, [id]: { ...layout, name: trimmed, updatedAt: Date.now() } },
+              history: id === s.activeLayoutId ? recorded(s.history, layout) : s.history,
             };
           }),
 
@@ -188,6 +262,7 @@ export const useLayoutStore = create<LayoutState>()(
             return {
               layouts: { ...s.layouts, [id]: resized },
               selection: s.selection.filter((sel) => !dropped.has(sel)),
+              history: id === s.activeLayoutId ? recorded(s.history, layout) : s.history,
             };
           }),
 
@@ -280,7 +355,11 @@ export const useLayoutStore = create<LayoutState>()(
               );
             }
             if (removed === 0) return s;
-            return { layouts, selection: s.selection.filter((id) => !removedIds.has(id)) };
+            return {
+              layouts,
+              selection: s.selection.filter((id) => !removedIds.has(id)),
+              history: EMPTY_HISTORY, // these removals cannot be undone
+            };
           });
           return removed;
         },
@@ -301,7 +380,11 @@ export const useLayoutStore = create<LayoutState>()(
               );
             }
             if (removed === 0) return s;
-            return { layouts, selection: s.selection.filter((id) => !removedIds.has(id)) };
+            return {
+              layouts,
+              selection: s.selection.filter((id) => !removedIds.has(id)),
+              history: EMPTY_HISTORY, // these removals cannot be undone
+            };
           });
           return removed;
         },

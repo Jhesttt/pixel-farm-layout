@@ -180,7 +180,11 @@ export default function ObjectDefEditor({ definition, onClose }: ObjectDefEditor
       icon: value.icon,
       effect: value.effect,
     });
-    if (sizeChanged) useLayoutStore.getState().removeMisfitObjects(useLibraryStore.getState().definitions);
+    if (sizeChanged) {
+      useLayoutStore.getState().removeMisfitObjects(useLibraryStore.getState().definitions);
+      // Older undo snapshots were laid out for the old size.
+      useLayoutStore.getState().clearHistory();
+    }
     onClose();
   };
 

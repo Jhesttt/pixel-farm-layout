@@ -29,8 +29,8 @@ function liveSelection(): string[] {
 
 /**
  * Editor shortcuts on the selection: Delete/Backspace remove, R rotates, arrows nudge one cell,
- * Ctrl/Cmd+D duplicates, Escape deselects. Ignored while typing in a field. Undo and redo join
- * in step 9.
+ * Ctrl/Cmd+D duplicates, Escape deselects, Ctrl/Cmd+Z undoes and Ctrl/Cmd+Shift+Z (or Ctrl+Y)
+ * redoes. Ignored while typing in a field, where the browser's own undo applies.
  */
 export function useKeyboardShortcuts() {
   useEffect(() => {
@@ -44,6 +44,12 @@ export function useKeyboardShortcuts() {
       const ids = liveSelection();
       const modifier = e.ctrlKey || e.metaKey;
 
+      if (modifier && !e.altKey && (e.key.toLowerCase() === "z" || e.key.toLowerCase() === "y")) {
+        e.preventDefault();
+        if (e.key.toLowerCase() === "y" || e.shiftKey) store.redo();
+        else store.undo();
+        return;
+      }
       if (modifier && !e.altKey && e.key.toLowerCase() === "d") {
         e.preventDefault(); // the browser would bookmark the page
         if (ids.length > 0) store.duplicateObjects(ids, defs);

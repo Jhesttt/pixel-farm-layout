@@ -104,6 +104,8 @@ export default function Palette({ onItemPointerDown }: PaletteProps) {
     if (!window.confirm(message)) return;
     useLayoutStore.getState().removeObjectsByDef(def.id);
     deleteDefinition(def.id);
+    // An undo could otherwise bring back objects whose definition no longer exists.
+    useLayoutStore.getState().clearHistory();
   };
 
   const requestReset = () => {
@@ -121,6 +123,7 @@ export default function Palette({ onItemPointerDown }: PaletteProps) {
     }
     resetBuiltIns();
     useLayoutStore.getState().removeMisfitObjects(useLibraryStore.getState().definitions);
+    useLayoutStore.getState().clearHistory(); // sizes may have changed back
   };
 
   return (

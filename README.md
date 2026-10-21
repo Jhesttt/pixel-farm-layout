@@ -1,66 +1,76 @@
 # Pixel Farm Layout Planner
 
-A client-only web app for planning grid-based pixel-farm layouts. No backend, no account: everything
-is saved in your browser's LocalStorage.
+A web app for planning grid-based pixel-farm layouts. Drag crops, scarecrows, orbs and your own objects onto
+a grid, see exactly what each one covers, and export the result as an image.
 
-- Pick a grid from 4×4 to 64×64 and drag objects onto it (crops in three sizes, scarecrow, orbs, path, or your own).
-- Objects can have an **area of effect** (a scarecrow covers 15×15, an element orb 13×13, and so on). Overlapping areas stack.
-- Label and recolour objects, rotate them, undo and redo (last 50 steps).
-- Keep several layouts, duplicate them, and back them up as JSON.
-- Export a layout as a PNG at 1x, 2x or 4x.
-- Works on phones: the board comes first, with an Objects / Edit panel underneath.
+It runs entirely in the browser. There is no server and no account: layouts are saved in your
+browser's LocalStorage.
 
-## Getting started
+## Features
 
-Needs Node.js 24 (the contrast check runs TypeScript directly).
-
-```bash
-npm install
-npm run dev        # http://localhost:5173
-```
-
-| Command | What it does |
-|---|---|
-| `npm run dev` | Start the dev server |
-| `npm run build` | Type-check and build to `dist/` |
-| `npm run preview` | Serve the production build locally |
-| `npm run typecheck` | `tsc --noEmit` for the app and the tooling |
-| `npm test` | Run the Vitest suite |
-| `npm run contrast` | Check every text and boundary colour pair in the theme meets WCAG contrast |
+- **Grids from 4×4 to 64×64.** The size menu offers 15×15, 17×17, 19×19, 21×21, 23×23, 25×25 and 27×27; any other size can be typed in.
+- **Drag and drop** from the palette, and move objects around the grid. Rotate while dragging with **R**.
+- **Areas of effect.** A scarecrow covers 15×15, an element orb 13×13, a rain orb 7×7, a water orb 5×5. The areas are clipped at the grid edge, and where several overlap they stack, with a count where three or more do.
+- **Built-in objects:** Crop (1×1, 2×2 and 4×4), Scarecrow, Element orb, Water orb, Rain orb and Path. All can be edited, deleted or restored with **Reset built-ins**.
+- **Your own objects:** choose a size, colour, icon and an area of effect, with a live preview. Offsets can be set so an effect only reaches in one direction.
+- **Label and recolour** any placed object, nudge, duplicate and delete it.
+- **Undo and redo** the last 50 changes.
+- **Several layouts:** switch, rename, duplicate and delete them.
+- **Export** a layout as a **PNG** at 1x, 2x or 4x, with options for the grid, effects, labels, coordinates and background. Or export it as **JSON**, and import JSON back in.
+- **Works on phones and tablets.** On a small screen the board comes first, with an Objects / Edit panel underneath.
 
 ## Using it
 
 | Do this | To |
 |---|---|
-| Drag from the palette | Place an object. Press **R** while dragging to rotate |
-| Click or tap an object | Select it (Shift/Ctrl-click for several) |
-| Drag a placed object | Move it. Drop it more than a few pixels **off the board** to delete it |
-| `R` / arrow keys / `Ctrl+D` / `Delete` | Rotate / nudge / duplicate / remove the selection |
-| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
-| **New object** in the palette | Create your own: size, colour, icon, area of effect |
-| **Layouts** | Switch, rename, duplicate, delete, import JSON, export a backup of everything |
-| **Export** | Download a PNG (or JSON) of the open layout |
+| Drag an item from the palette | Place it. Press **R** while dragging to rotate |
+| Click or tap a placed object | Select it (Shift or Ctrl-click for several) |
+| Drag a placed object | Move it. Drop it clearly **off the board** to delete it |
+| **R**, arrow keys, **Ctrl+D**, **Delete** | Rotate, nudge, duplicate, remove the selection |
+| **Ctrl+Z**, **Ctrl+Shift+Z** | Undo, redo |
+| **New object** in the palette | Create your own object |
+| **Layouts** | Manage layouts, import JSON, or export a backup of all of them |
+| **Export** | Download a PNG or JSON of the open layout |
 
-Your data lives only in this browser. Use **Layouts → Export all** now and then to keep a backup.
+Your layouts live only in this browser. Use **Layouts → Export all** now and then to keep a backup,
+especially before clearing browser data.
 
-## Project layout
+## Running it locally
+
+You need [Node.js](https://nodejs.org/) 24.
+
+```bash
+npm install
+npm run dev        # opens on http://localhost:5173
+```
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start the dev server |
+| `npm run build` | Type-check and build the site into `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run typecheck` | Type-check the app and the tooling |
+| `npm test` | Run the test suite |
+| `npm run contrast` | Check that every text and boundary colour in the theme meets WCAG contrast |
+
+## Built with
+
+React 18, TypeScript (strict), Vite, Tailwind CSS, Zustand, zod, nanoid and Vitest. Pointer Events handle
+drag and drop (mouse and touch), and the PNG export is drawn with the Canvas 2D API.
 
 ```
 src/
   lib/          pure logic: grid and placement rules, editing, import/export, canvas renderer
-  store/        Zustand stores (layouts, object library) and their persistence
+  store/        layouts and the object library, with persistence
   hooks/        drag and drop, keyboard shortcuts, responsive helpers
-  components/   TopBar, Palette, Grid (board, objects, effects), Inspector, dialogs
+  components/   top bar, palette, board, inspector, dialogs
   data/         built-in objects
-  theme.css     the colour, type and shape tokens (single source of truth for styling)
-  __tests__/    Vitest suites
+  theme.css     colour, type and shape tokens: the one place styling is defined
+  __tests__/    test suites
 ```
-
-[`CLAUDE.md`](./CLAUDE.md) is the architecture spec the app was built from, including the build-order
-checklist.
 
 ## Deploying
 
-`npm run build` produces a static site in `dist/` that can be hosted anywhere. Asset URLs are
-relative, so it also works from a subpath such as GitHub Pages' `https://<user>.github.io/<repo>/`.
-Fonts are loaded from Google Fonts at runtime; offline, the app falls back to system fonts.
+`npm run build` produces a static site in `dist/` that any static host can serve. Asset URLs are relative,
+so it also works from a subpath such as a GitHub Pages project site (`https://<user>.github.io/<repo>/`).
+Fonts load from Google Fonts; offline, the app falls back to system fonts.

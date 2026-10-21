@@ -4,6 +4,7 @@ import {
   canPlace,
   classifyPointer,
   clampGrab,
+  GRID_SIZE_PRESETS,
   clampGridSize,
   cellKey,
   getCellBounds,
@@ -658,5 +659,18 @@ describe("classifyPointer", () => {
       expect(at(90, 150, big)).toBe("near");
       expect(at(0, 0, big)).toBe("away");
     });
+  });
+});
+
+describe("GRID_SIZE_PRESETS", () => {
+  it("run 15x15 to 27x27 in steps of two", () => {
+    expect([...GRID_SIZE_PRESETS]).toEqual([15, 17, 19, 21, 23, 25, 27]);
+  });
+
+  it("are ascending and all valid grid sizes", () => {
+    for (const [i, n] of GRID_SIZE_PRESETS.entries()) {
+      expect(clampGridSize(n)).toBe(n);
+      if (i > 0) expect(n).toBeGreaterThan(GRID_SIZE_PRESETS[i - 1] as number);
+    }
   });
 });

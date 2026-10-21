@@ -3,6 +3,9 @@ import type { Cell, FarmLayout, ObjectDefinition, PlacedObject } from "../types.
 export const GRID_MIN_SIZE = 4;
 export const GRID_MAX_SIZE = 64;
 
+/** The square sizes offered in the size dropdown: 15x15, 17x17, ... up to 27x27. Any size from 4 to 64 can still be typed. */
+export const GRID_SIZE_PRESETS = [15, 17, 19, 21, 23, 25, 27] as const;
+
 /** Rounds to an integer within GRID_MIN_SIZE..GRID_MAX_SIZE; non-finite input becomes the minimum. */
 export function clampGridSize(n: number): number {
   if (!Number.isFinite(n)) return GRID_MIN_SIZE;

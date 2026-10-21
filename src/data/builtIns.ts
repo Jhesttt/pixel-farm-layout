@@ -1,7 +1,7 @@
 import { centeredOffset } from "../lib/grid.ts";
 import type { EffectDefinition, ObjectDefinition } from "../types.ts";
 
-// Effect centered on the footprint (section 3): offset = -floor((effectSize - objSize) / 2)
+// Effect centred on the footprint: offset = -floor((effectSize - objSize) / 2)
 function centeredEffect(
   objW: number,
   objH: number,

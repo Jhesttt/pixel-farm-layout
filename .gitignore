@@ -27,3 +27,6 @@ dist-ssr
 .claude/
 .taste-skill/
 skills-lock.json
+
+# project notes kept local, not published
+CLAUDE.md

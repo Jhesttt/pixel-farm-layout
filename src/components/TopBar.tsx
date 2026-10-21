@@ -1,13 +1,17 @@
 import { useState } from "react";
-import { GRID_MAX_SIZE, GRID_MIN_SIZE, clampGridSize, getObjectsOutsideSize } from "../lib/grid";
+import {
+  GRID_MAX_SIZE,
+  GRID_MIN_SIZE,
+  GRID_SIZE_PRESETS,
+  clampGridSize,
+  getObjectsOutsideSize,
+} from "../lib/grid";
 import { selectActiveLayout, useLayoutStore } from "../store/layoutStore";
 import { useLibraryStore } from "../store/libraryStore";
 import BrandMark from "./BrandMark";
 import CommitInput from "./CommitInput";
 import ExportDialog from "./ExportDialog";
 import LayoutsDrawer from "./LayoutsDrawer";
-
-const SIZE_PRESETS = [15, 17, 20, 24, 32];
 
 const iconProps = {
   "aria-hidden": true,
@@ -53,7 +57,7 @@ export default function TopBar() {
   };
 
   const presetValue =
-    layout && layout.width === layout.height && SIZE_PRESETS.includes(layout.width)
+    layout && layout.width === layout.height && (GRID_SIZE_PRESETS as readonly number[]).includes(layout.width)
       ? String(layout.width)
       : "custom";
 
@@ -134,7 +138,7 @@ export default function TopBar() {
                   }
                 }}
               >
-                {SIZE_PRESETS.map((n) => (
+                {GRID_SIZE_PRESETS.map((n) => (
                   <option key={n} value={n}>
                     {n}x{n}
                   </option>

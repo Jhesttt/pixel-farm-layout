@@ -1,4 +1,4 @@
-import type { EffectDefinition, ObjectDefinition } from "../types";
+import type { EffectDefinition, ObjectDefinition } from "../types.ts";
 
 // Effect centered on the footprint (section 3): offset = -floor((effectSize - objSize) / 2)
 function centeredEffect(
@@ -19,17 +19,17 @@ function centeredEffect(
 }
 
 export const BUILT_IN_DEFINITIONS: ObjectDefinition[] = [
-  { id: "builtin-crop", name: "Crop", width: 1, height: 1, color: "#4ade80", icon: "🌱", builtIn: true },
-  { id: "builtin-tree", name: "Tree", width: 2, height: 2, color: "#15803d", icon: "🌳", builtIn: true },
-  { id: "builtin-barn", name: "Barn", width: 4, height: 4, color: "#b91c1c", icon: "🏠", builtIn: true },
+  { id: "builtin-crop", name: "Crop", width: 1, height: 1, color: "#8fb07e", icon: "🌱", builtIn: true },
+  { id: "builtin-tree", name: "Tree", width: 2, height: 2, color: "#3e6a4b", icon: "🌳", builtIn: true },
+  { id: "builtin-barn", name: "Barn", width: 4, height: 4, color: "#a75d5d", icon: "🏠", builtIn: true },
   {
     id: "builtin-scarecrow",
     name: "Scarecrow",
     width: 1,
     height: 1,
-    color: "#d97706",
+    color: "#ddaa4f",
     icon: "🎃",
-    effect: centeredEffect(1, 1, 7, 7, "#f59e0b"),
+    effect: centeredEffect(1, 1, 7, 7, "#d3756b"),
     builtIn: true,
   },
   {
@@ -37,12 +37,12 @@ export const BUILT_IN_DEFINITIONS: ObjectDefinition[] = [
     name: "Sprinkler",
     width: 1,
     height: 1,
-    color: "#0284c7",
+    color: "#355f7e",
     icon: "💧",
-    effect: centeredEffect(1, 1, 3, 3, "#38bdf8"),
+    effect: centeredEffect(1, 1, 3, 3, "#4f86a8"),
     builtIn: true,
   },
-  { id: "builtin-path", name: "Path", width: 1, height: 1, color: "#a8a29e", builtIn: true },
-  { id: "builtin-fence", name: "Fence", width: 2, height: 1, color: "#92400e", builtIn: true },
-  { id: "builtin-water", name: "Water", width: 1, height: 1, color: "#3b82f6", builtIn: true },
+  { id: "builtin-path", name: "Path", width: 1, height: 1, color: "#c9b398", builtIn: true },
+  { id: "builtin-fence", name: "Fence", width: 2, height: 1, color: "#7a5640", builtIn: true },
+  { id: "builtin-water", name: "Water", width: 1, height: 1, color: "#8dbbd6", builtIn: true },
 ];

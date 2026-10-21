@@ -2,14 +2,22 @@ import { useEffect, useState } from "react";
 import { GRID_MAX_SIZE, GRID_MIN_SIZE, clampGridSize, getObjectsOutsideSize } from "../lib/grid";
 import { selectActiveLayout, useLayoutStore } from "../store/layoutStore";
 import { useLibraryStore } from "../store/libraryStore";
+import BrandMark from "./BrandMark";
 
 const SIZE_PRESETS = [15, 17, 20, 24, 32];
 const DEFAULT_SIZE = 17;
 
-const inputClass =
-  "rounded border border-stone-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500";
-const buttonClass =
-  "rounded border border-stone-300 bg-white px-3 py-1 text-sm hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40";
+const iconProps = {
+  "aria-hidden": true,
+  width: 16,
+  height: 16,
+  viewBox: "0 0 16 16",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+} as const;
 
 /** Text input that edits locally and commits on blur / Enter; Escape reverts. */
 function CommitInput({
@@ -81,62 +89,77 @@ export default function TopBar() {
       : "custom";
 
   return (
-    <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-stone-300 bg-stone-100 px-4 py-2">
-      <h1 className="text-base font-semibold text-emerald-800">Pixel Farm</h1>
+    <header className="flex min-h-20 flex-wrap items-end gap-x-6 gap-y-3 border-b border-line bg-paper px-5 py-3">
+      <div className="flex items-center gap-3 self-center text-primary-strong">
+        <BrandMark />
+        <h1 className="text-2xl leading-none font-semibold text-ink">Pixel Farm</h1>
+      </div>
 
       {/* Temporary switcher until the LayoutsDrawer (step 10) */}
-      <div className="flex items-center gap-2">
-        <select
-          aria-label="Saved layouts"
-          className={inputClass}
-          value={layout?.id ?? ""}
-          onChange={(e) => setActiveLayout(e.target.value)}
-        >
-          {sortedLayouts.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name} ({l.width}x{l.height})
-            </option>
-          ))}
-        </select>
+      <div className="flex flex-wrap items-end gap-2">
+        {sortedLayouts.length > 0 && (
+          <label className="flex flex-col gap-1">
+            <span className="field-label">Layout</span>
+            <select
+              aria-label="Saved layouts"
+              className="field min-w-44"
+              value={layout?.id ?? ""}
+              onChange={(e) => setActiveLayout(e.target.value)}
+            >
+              {sortedLayouts.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name} ({l.width}x{l.height})
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button
           type="button"
-          className={buttonClass}
+          className="btn btn-primary"
           onClick={() => createLayout(`Farm ${sortedLayouts.length + 1}`, DEFAULT_SIZE, DEFAULT_SIZE)}
         >
-          + New
+          <svg {...iconProps}>
+            <path d="M8 3v10M3 8h10" />
+          </svg>
+          New layout
         </button>
-        <button
-          type="button"
-          className={buttonClass}
-          disabled={!layout}
-          onClick={() => {
-            if (layout && window.confirm(`Delete "${layout.name}"? This cannot be undone.`)) {
-              deleteLayout(layout.id);
-            }
-          }}
-        >
-          Delete
-        </button>
+        {layout && (
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => {
+              if (window.confirm(`Delete "${layout.name}"? This cannot be undone.`)) {
+                deleteLayout(layout.id);
+              }
+            }}
+          >
+            <svg {...iconProps}>
+              <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8h5.8l.6-8" />
+            </svg>
+            Delete
+          </button>
+        )}
       </div>
 
       {layout && (
         <>
-          <label className="flex items-center gap-2 text-sm">
-            Name
+          <label className="flex flex-col gap-1">
+            <span className="field-label">Name</span>
             <CommitInput
               aria-label="Layout name"
-              className={`${inputClass} w-48`}
+              className="field w-52"
               value={layout.name}
               onCommit={(name) => renameLayout(layout.id, name)}
             />
           </label>
 
-          <div className="flex items-center gap-2 text-sm">
-            <label className="flex items-center gap-2">
-              Size
+          <div role="group" aria-label="Grid size" className="flex flex-col gap-1">
+            <span className="field-label">Size</span>
+            <div className="flex items-center gap-2">
               <select
                 aria-label="Grid size preset"
-                className={inputClass}
+                className="field"
                 value={presetValue}
                 onChange={(e) => {
                   if (e.target.value !== "custom") {
@@ -151,28 +174,30 @@ export default function TopBar() {
                 ))}
                 <option value="custom">Custom</option>
               </select>
-            </label>
-            <CommitInput
-              aria-label="Grid width"
-              type="number"
-              inputMode="numeric"
-              min={GRID_MIN_SIZE}
-              max={GRID_MAX_SIZE}
-              className={`${inputClass} w-16`}
-              value={String(layout.width)}
-              onCommit={(text) => commitSide("width", text)}
-            />
-            <span aria-hidden>x</span>
-            <CommitInput
-              aria-label="Grid height"
-              type="number"
-              inputMode="numeric"
-              min={GRID_MIN_SIZE}
-              max={GRID_MAX_SIZE}
-              className={`${inputClass} w-16`}
-              value={String(layout.height)}
-              onCommit={(text) => commitSide("height", text)}
-            />
+              <CommitInput
+                aria-label="Grid width"
+                type="number"
+                inputMode="numeric"
+                min={GRID_MIN_SIZE}
+                max={GRID_MAX_SIZE}
+                className="field w-[4.5rem] text-center"
+                value={String(layout.width)}
+                onCommit={(text) => commitSide("width", text)}
+              />
+              <span aria-hidden className="text-ink-soft">
+                ×
+              </span>
+              <CommitInput
+                aria-label="Grid height"
+                type="number"
+                inputMode="numeric"
+                min={GRID_MIN_SIZE}
+                max={GRID_MAX_SIZE}
+                className="field w-[4.5rem] text-center"
+                value={String(layout.height)}
+                onCommit={(text) => commitSide("height", text)}
+              />
+            </div>
           </div>
         </>
       )}

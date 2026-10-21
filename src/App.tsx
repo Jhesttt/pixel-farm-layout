@@ -18,10 +18,28 @@ function StorageToast() {
   return (
     <div
       role="alert"
-      className="fixed bottom-4 left-1/2 flex max-w-md -translate-x-1/2 items-start gap-3 rounded bg-stone-800 px-4 py-3 text-sm text-white shadow-lg"
+      className="fixed bottom-4 left-1/2 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-start gap-3 rounded-card bg-ink px-4 py-3 text-sm text-paper shadow-float"
     >
-      <span>{text}</span>
-      <button type="button" className="font-semibold underline" onClick={() => setEvent(null)}>
+      <svg
+        aria-hidden
+        className="mt-0.5 shrink-0"
+        width="18"
+        height="18"
+        viewBox="0 0 18 18"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M9 2.5 16.5 15h-15L9 2.5ZM9 7.5v3.5M9 13h.01" />
+      </svg>
+      <span className="flex-1">{text}</span>
+      <button
+        type="button"
+        className="rounded-control px-1 font-semibold underline transition duration-150 ease-soft hover:bg-paper/15"
+        onClick={() => setEvent(null)}
+      >
         Dismiss
       </button>
     </div>
@@ -37,7 +55,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="flex h-screen flex-col bg-stone-50 text-stone-900">
+    <div className="flex h-screen flex-col bg-page text-ink">
       <TopBar />
       <main className="flex min-h-0 flex-1">
         <GridCanvas />

@@ -1,0 +1,185 @@
+/*
+ * Cozy theme: the one place colours, type, radii and shadows are defined.
+ * Components use the generated utilities (bg-page, text-ink, rounded-card, ...) or the shared
+ * classes at the bottom (.btn, .field, .panel). Every --color-* below is a flat #rrggbb so
+ * src/theme/contrast.ts can read it; `npm run contrast` checks the text and boundary pairs.
+ */
+@theme {
+  /* surfaces, light to dark */
+  --color-paper: #fffbf6; /* cards, bars, inputs */
+  --color-page: #fff6ee; /* app background */
+  --color-wash: #ffe9db; /* hover / selected tint on paper */
+  --color-sunken: #f7e9dc; /* wells, disabled fields */
+  --color-board: #f5e4cf; /* the grid ground */
+  --color-peach-soft: #ffc3a1; /* highlights, tinted surfaces */
+  --color-peach: #f0997d; /* tinted surfaces, progress */
+
+  /* brand */
+  --color-primary: #a75d5d; /* primary actions, selected state, focus ring */
+  --color-primary-strong: #8a4747; /* primary hover / pressed */
+  --color-on-primary: #fffbf6;
+  --color-accent: #d3756b; /* terracotta: accents, borders, rings. Never behind text. */
+
+  /* text */
+  --color-ink: #3b2323;
+  --color-ink-deep: #2a1616; /* text on accent and peach fills */
+  --color-ink-soft: #6a4a46; /* secondary text */
+  --color-ink-faint: #7b5b55; /* placeholders, meta */
+
+  /* edges */
+  --color-line: #ebd3c3; /* decorative card borders */
+  --color-control-edge: #a07c6a; /* input / button boundaries (3:1 on paper and page) */
+
+  /* the board */
+  --color-board-edge: #8f6b58;
+  --color-grid-line: #9c7a66;
+  --color-grid-line-major: #6f4f42;
+  --color-scroll-thumb: #a07c6a;
+  --color-scroll-track: #f7e9dc;
+
+  /* supporting hues */
+  --color-sage: #8fb07e;
+  --color-sage-deep: #3e6a4b; /* valid placement */
+  --color-sage-wash: #e3edd9;
+  --color-blue: #6f97b5;
+  --color-blue-deep: #355f7e;
+  --color-blue-wash: #dce9f2;
+  --color-negative: #9b2c2c; /* invalid placement, destructive */
+  --color-negative-wash: #fbe3df;
+
+  /* effect overlays: fill is drawn at partial opacity, edge is the solid outline */
+  --color-effect-warm: #d3756b;
+  --color-effect-warm-edge: #a14238;
+  --color-effect-cool: #4f86a8;
+  --color-effect-cool-edge: #355f7e;
+
+  /* type */
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-ui: "Nunito Sans", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+
+  /* shape: one soft radius family, stepping down when nested */
+  --radius-card: 1rem;
+  --radius-control: 0.625rem;
+  --radius-board: 0.25rem;
+
+  /* shadows are warm brown; resting surfaces get a border, not a shadow */
+  --shadow-soft: 0 1px 2px rgb(59 35 35 / 0.08), 0 4px 14px rgb(59 35 35 / 0.1);
+  --shadow-float: 0 4px 10px rgb(59 35 35 / 0.12), 0 16px 36px rgb(59 35 35 / 0.18);
+
+  --ease-soft: cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 100;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: var(--color-peach-soft);
+    color: var(--color-ink-deep);
+  }
+
+  /* One visible focus ring everywhere: primary on page/paper, with a paper gap so it also
+     separates from a primary-filled control. */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  input,
+  select,
+  button {
+    font: inherit;
+  }
+
+  input::placeholder {
+    color: var(--color-ink-faint);
+  }
+
+  /* Warm, slim scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-scroll-thumb) var(--color-scroll-track);
+  }
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-scroll-track);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-scroll-thumb);
+    border: 3px solid var(--color-scroll-track);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-control-edge);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Shared control styles so later components (palette, inspector, drawer, dialogs) match. */
+@layer components {
+  .btn {
+    @apply inline-flex h-9 items-center justify-center gap-2 rounded-control px-4 text-sm font-semibold whitespace-nowrap;
+    @apply transition duration-150 ease-soft active:translate-y-px;
+    @apply disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply bg-primary text-on-primary hover:bg-primary-strong;
+  }
+  .btn-secondary {
+    @apply border border-control-edge bg-paper text-ink hover:bg-wash;
+  }
+  .btn-danger {
+    @apply border border-negative bg-paper text-negative hover:bg-negative-wash;
+  }
+
+  .field {
+    @apply h-9 rounded-control border border-control-edge bg-paper px-3 text-sm text-ink tabular-nums;
+    @apply transition duration-150 ease-soft hover:bg-wash;
+  }
+  select.field {
+    @apply cursor-pointer appearance-none pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%233b2323' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+  }
+
+  .field-label {
+    @apply text-xs font-semibold text-ink-soft;
+  }
+
+  .panel {
+    @apply rounded-card border border-line bg-paper;
+  }
+}

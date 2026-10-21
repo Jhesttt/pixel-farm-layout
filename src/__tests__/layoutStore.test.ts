@@ -146,3 +146,92 @@ describe("library store", () => {
     expect(lib().definitions).toHaveLength(9);
   });
 });
+
+describe("placeObject and moveObject", () => {
+  const crop = (x: number, y: number): Omit<PlacedObject, "id"> => ({
+    defId: "builtin-crop", x, y, rotation: 0, showEffect: true,
+  });
+  const fence = (x: number, y: number, rotation: PlacedObject["rotation"] = 0): Omit<PlacedObject, "id"> => ({
+    defId: "builtin-fence", x, y, rotation, showEffect: true,
+  });
+  const active = () => get().layouts[get().activeLayoutId!]!;
+
+  it("placeObject adds to the active layout and returns the new id", () => {
+    get().createLayout("a", 8, 8);
+    const id = get().placeObject(crop(2, 3), defs);
+    expect(id).toEqual(expect.any(String));
+    expect(active().objects).toEqual([{ ...crop(2, 3), id }]);
+  });
+
+  it("placeObject bumps updatedAt", () => {
+    const layoutId = get().createLayout("a", 8, 8);
+    useLayoutStore.setState((s) => ({ layouts: { ...s.layouts, [layoutId]: { ...s.layouts[layoutId]!, updatedAt: 1 } } }));
+    get().placeObject(crop(0, 0), defs);
+    expect(active().updatedAt).toBeGreaterThan(1);
+  });
+
+  it("placeObject refuses out-of-bounds, overlapping and unknown-definition placements", () => {
+    get().createLayout("a", 8, 8);
+    get().placeObject(crop(2, 2), defs);
+    expect(get().placeObject(crop(8, 0), defs)).toBeNull();
+    expect(get().placeObject(crop(-1, 0), defs)).toBeNull();
+    expect(get().placeObject(crop(2, 2), defs)).toBeNull();
+    expect(get().placeObject({ ...crop(0, 0), defId: "gone" }, defs)).toBeNull();
+    expect(active().objects).toHaveLength(1);
+  });
+
+  it("placeObject does nothing without an active layout", () => {
+    expect(get().placeObject(crop(0, 0), defs)).toBeNull();
+  });
+
+  it("placeObject respects the rotated footprint", () => {
+    get().createLayout("a", 4, 4);
+    expect(get().placeObject(fence(0, 3, 90), defs)).toBeNull(); // 1x2 would stick out below
+    expect(get().placeObject(fence(0, 3, 0), defs)).not.toBeNull();
+  });
+
+  it("moveObject moves to a free spot", () => {
+    get().createLayout("a", 8, 8);
+    const id = get().placeObject(crop(1, 1), defs)!;
+    expect(get().moveObject(id, 5, 6, defs)).toBe(true);
+    expect(active().objects[0]).toMatchObject({ id, x: 5, y: 6 });
+  });
+
+  it("moveObject can overlap the object's own old footprint", () => {
+    get().createLayout("a", 8, 8);
+    const id = get().placeObject({ ...fence(1, 1) }, defs)!;
+    expect(get().moveObject(id, 2, 1, defs)).toBe(true); // shifts by one, overlapping itself
+  });
+
+  it("moveObject refuses occupied and out-of-bounds targets and leaves the object alone", () => {
+    get().createLayout("a", 8, 8);
+    const a = get().placeObject(crop(1, 1), defs)!;
+    get().placeObject(crop(4, 4), defs);
+    expect(get().moveObject(a, 4, 4, defs)).toBe(false);
+    expect(get().moveObject(a, 8, 1, defs)).toBe(false);
+    expect(active().objects.find((o) => o.id === a)).toMatchObject({ x: 1, y: 1 });
+  });
+
+  it("moveObject applies a rotation, checked against the rotated footprint", () => {
+    get().createLayout("a", 4, 4);
+    const id = get().placeObject(fence(0, 3), defs)!;
+    expect(get().moveObject(id, 0, 3, defs, 90)).toBe(false); // rotated, it would leave the grid
+    expect(active().objects[0]?.rotation).toBe(0);
+    expect(get().moveObject(id, 0, 2, defs, 90)).toBe(true);
+    expect(active().objects[0]).toMatchObject({ x: 0, y: 2, rotation: 90 });
+  });
+
+  it("moveObject returns false for an unknown id", () => {
+    get().createLayout("a", 8, 8);
+    expect(get().moveObject("nope", 0, 0, defs)).toBe(false);
+  });
+
+  it("only touches the active layout", () => {
+    const first = get().createLayout("first", 8, 8);
+    get().placeObject(crop(0, 0), defs);
+    get().createLayout("second", 8, 8);
+    get().placeObject(crop(0, 0), defs);
+    expect(get().layouts[first]?.objects).toHaveLength(1);
+    expect(active().objects).toHaveLength(1);
+  });
+});

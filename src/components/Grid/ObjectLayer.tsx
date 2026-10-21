@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type PointerEvent as ReactPointerEvent } from "react";
 import { getFootprintSize } from "../../lib/grid";
 import { useLibraryStore } from "../../store/libraryStore";
 import { labelColorFor } from "../../theme/contrast";
@@ -7,6 +7,9 @@ import type { ObjectDefinition, PlacedObject } from "../../types";
 interface ObjectLayerProps {
   objects: PlacedObject[];
   cellSize: number;
+  /** An object being dragged: kept mounted (so pointer capture survives) but invisible. */
+  hiddenObjectId?: string | null;
+  onObjectPointerDown?: (e: ReactPointerEvent<HTMLElement>, obj: PlacedObject) => void;
 }
 
 const MIN_PX_FOR_ICON = 20;
@@ -19,7 +22,12 @@ function describe(obj: PlacedObject, def: ObjectDefinition): string {
 }
 
 /** Placed objects as absolutely positioned boxes, one cell = `cellSize` px. */
-export default function ObjectLayer({ objects, cellSize }: ObjectLayerProps) {
+export default function ObjectLayer({
+  objects,
+  cellSize,
+  hiddenObjectId = null,
+  onObjectPointerDown,
+}: ObjectLayerProps) {
   const definitions = useLibraryStore((s) => s.definitions);
   const defsById = useMemo(() => new Map(definitions.map((d) => [d.id, d])), [definitions]);
 
@@ -41,7 +49,8 @@ export default function ObjectLayer({ objects, cellSize }: ObjectLayerProps) {
             key={obj.id}
             role="img"
             aria-label={describe(obj, def)}
-            className="absolute flex flex-col items-center justify-center overflow-hidden rounded-[3px] ring-2 ring-inset ring-ink-deep/70"
+            className="absolute flex cursor-grab touch-none flex-col items-center justify-center overflow-hidden rounded-[3px] ring-2 ring-inset ring-ink-deep/70 select-none"
+            onPointerDown={onObjectPointerDown && ((e) => onObjectPointerDown(e, obj))}
             style={{
               left: obj.x * cellSize,
               top: obj.y * cellSize,
@@ -49,6 +58,7 @@ export default function ObjectLayer({ objects, cellSize }: ObjectLayerProps) {
               height: pxH,
               backgroundColor: fill,
               color: labelColorFor(fill),
+              opacity: obj.id === hiddenObjectId ? 0 : 1,
             }}
           >
             {showIcon && (

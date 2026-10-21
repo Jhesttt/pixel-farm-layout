@@ -40,6 +40,30 @@ export function getFootprintSize(
   return swapped ? { width: def.height, height: def.width } : { width: def.width, height: def.height };
 }
 
+/** The grid cell under a pointer, given the grid's top-left corner and the cell size, all in px. */
+export function pointerToCell(
+  pointerX: number,
+  pointerY: number,
+  origin: { left: number; top: number },
+  cellSize: number,
+): Cell {
+  return {
+    x: Math.floor((pointerX - origin.left) / cellSize),
+    y: Math.floor((pointerY - origin.top) / cellSize),
+  };
+}
+
+/** Keeps a grab offset (which cell of the object is held) inside a footprint of this size. */
+export function clampGrab(
+  grab: { dx: number; dy: number },
+  size: { width: number; height: number },
+): { dx: number; dy: number } {
+  return {
+    dx: Math.min(Math.max(grab.dx, 0), size.width - 1),
+    dy: Math.min(Math.max(grab.dy, 0), size.height - 1),
+  };
+}
+
 /** Cells covered by the object's footprint, in absolute grid coordinates. */
 export function getFootprint(obj: PlacedObject, def: ObjectDefinition): Cell[] {
   const { width, height } = getFootprintSize(obj, def);

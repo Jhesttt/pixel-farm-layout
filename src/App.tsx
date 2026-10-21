@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import DragGhost from "./components/Grid/DragGhost";
 import GridCanvas from "./components/Grid/GridCanvas";
+import Palette from "./components/Palette/Palette";
+import { useGridDrag } from "./hooks/useGridDrag";
 import TopBar from "./components/TopBar";
 import { onStorageError, type StorageErrorEvent } from "./lib/storage";
 import { useLayoutStore } from "./store/layoutStore";
@@ -46,6 +49,23 @@ function StorageToast() {
   );
 }
 
+function Workspace() {
+  const gridRef = useRef<HTMLDivElement>(null);
+  const { drag, startPaletteDrag, startObjectDrag } = useGridDrag(gridRef);
+
+  return (
+    <main className="flex min-h-0 flex-1 flex-col md:flex-row">
+      <Palette onItemPointerDown={startPaletteDrag} />
+      <GridCanvas
+        gridRef={gridRef}
+        hiddenObjectId={drag?.objectId ?? null}
+        onObjectPointerDown={startObjectDrag}
+      />
+      <DragGhost drag={drag} />
+    </main>
+  );
+}
+
 export default function App() {
   // First run (or all layouts deleted elsewhere): start with one empty layout.
   useEffect(() => {
@@ -57,9 +77,7 @@ export default function App() {
   return (
     <div className="flex h-screen flex-col bg-page text-ink">
       <TopBar />
-      <main className="flex min-h-0 flex-1">
-        <GridCanvas />
-      </main>
+      <Workspace />
       <StorageToast />
     </div>
   );

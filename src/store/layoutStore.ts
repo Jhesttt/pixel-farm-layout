@@ -1,10 +1,10 @@
 import { nanoid } from "nanoid";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { clampGridSize, getObjectsOutsideSize } from "../lib/grid";
+import { canPlace, clampGridSize, getObjectsOutsideSize } from "../lib/grid";
 import { persistedLayoutsSchema } from "../lib/schemas";
 import { createSafeStorage, envelopeValidator } from "../lib/storage";
-import type { FarmLayout, ObjectDefinition } from "../types";
+import type { FarmLayout, ObjectDefinition, PlacedObject } from "../types";
 
 export const LAYOUTS_STORAGE_KEY = "pfl:layouts:v1";
 const LAYOUTS_VERSION = 1;
@@ -22,6 +22,22 @@ interface LayoutState {
    * first (see `getObjectsOutsideSize`). `defs` supplies the footprints.
    */
   resizeLayout: (id: string, width: number, height: number, defs: ObjectDefinition[]) => void;
+  /**
+   * Adds an object to the active layout if `canPlace` allows it. Returns the new id, or null when
+   * it does not fit (nothing changes).
+   */
+  placeObject: (object: Omit<PlacedObject, "id">, defs: ObjectDefinition[]) => string | null;
+  /**
+   * Moves (and optionally rotates) an object in the active layout if the new spot is valid, with
+   * the object itself ignored in the collision check. Returns whether it moved.
+   */
+  moveObject: (
+    id: string,
+    x: number,
+    y: number,
+    defs: ObjectDefinition[],
+    rotation?: PlacedObject["rotation"],
+  ) => boolean;
 }
 
 interface PersistedLayouts {
@@ -39,7 +55,7 @@ function mostRecentlyUpdatedId(layouts: Record<string, FarmLayout>): string | nu
 
 export const useLayoutStore = create<LayoutState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       layouts: {},
       activeLayoutId: null,
 
@@ -99,6 +115,39 @@ export const useLayoutStore = create<LayoutState>()(
           };
           return { layouts: { ...s.layouts, [id]: resized } };
         }),
+
+      placeObject: (object, defs) => {
+        const layout = selectActiveLayout(get());
+        if (!layout) return null;
+        const placed: PlacedObject = { ...object, id: nanoid() };
+        if (!canPlace(layout, defs, placed)) return null;
+        set((s) => ({
+          layouts: {
+            ...s.layouts,
+            [layout.id]: { ...layout, objects: [...layout.objects, placed], updatedAt: Date.now() },
+          },
+        }));
+        return placed.id;
+      },
+
+      moveObject: (id, x, y, defs, rotation) => {
+        const layout = selectActiveLayout(get());
+        const current = layout?.objects.find((o) => o.id === id);
+        if (!layout || !current) return false;
+        const moved: PlacedObject = { ...current, x, y, rotation: rotation ?? current.rotation };
+        if (!canPlace(layout, defs, moved, [id])) return false;
+        set((s) => ({
+          layouts: {
+            ...s.layouts,
+            [layout.id]: {
+              ...layout,
+              objects: layout.objects.map((o) => (o.id === id ? moved : o)),
+              updatedAt: Date.now(),
+            },
+          },
+        }));
+        return true;
+      },
     }),
     {
       name: LAYOUTS_STORAGE_KEY,

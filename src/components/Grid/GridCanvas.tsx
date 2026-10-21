@@ -1,32 +1,29 @@
-import { useMemo, useRef } from "react";
-import { sampleObjectsFor } from "../../data/sampleObjects";
+import { useRef, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { useCellSize } from "../../hooks/useCellSize";
 import { selectActiveLayout, useLayoutStore } from "../../store/layoutStore";
-import { useLibraryStore } from "../../store/libraryStore";
 import NoLayoutsState from "../NoLayoutsState";
 import GridLayer from "./GridLayer";
 import ObjectLayer from "./ObjectLayer";
+import type { PlacedObject } from "../../types";
 
 const RULER_SIZE = 24;
 const PADDING = 24; // around the board card
 const CARD_PADDING = 16; // inside the board card
 
-export default function GridCanvas() {
+interface GridCanvasProps {
+  /** Origin of cell (0, 0); the drag hook converts pointer positions against it. */
+  gridRef: RefObject<HTMLDivElement>;
+  hiddenObjectId: string | null;
+  onObjectPointerDown: (e: ReactPointerEvent<HTMLElement>, obj: PlacedObject) => void;
+}
+
+export default function GridCanvas({ gridRef, hiddenObjectId, onObjectPointerDown }: GridCanvasProps) {
   const layout = useLayoutStore(selectActiveLayout);
   const containerRef = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const definitions = useLibraryStore((s) => s.definitions);
   const cellSize = useCellSize(
     containerRef,
     layout?.width ?? 1,
     RULER_SIZE + CARD_PADDING * 2 + PADDING * 2,
-  );
-
-  // Step 4 only: an empty layout shows hardcoded samples so sizing and rotation can be checked.
-  // Removed in step 5, when objects come from dragging.
-  const objects = useMemo(
-    () => (layout && layout.objects.length === 0 ? sampleObjectsFor(layout, definitions) : (layout?.objects ?? [])),
-    [layout, definitions],
   );
 
   if (!layout) return <NoLayoutsState />;
@@ -49,7 +46,6 @@ export default function GridCanvas() {
             className="relative"
             style={{ width: RULER_SIZE + pixelWidth, height: RULER_SIZE + pixelHeight }}
           >
-            {/* gridRef is the origin for pointer-to-cell conversion in the drag hook (step 5) */}
             <div
               ref={gridRef}
               className="absolute"
@@ -61,8 +57,13 @@ export default function GridCanvas() {
                 cellSize={cellSize}
                 rulerSize={RULER_SIZE}
               />
-              <ObjectLayer objects={objects} cellSize={cellSize} />
-              {/* EffectLayer and DragGhost mount here in later steps */}
+              <ObjectLayer
+                objects={layout.objects}
+                cellSize={cellSize}
+                hiddenObjectId={hiddenObjectId}
+                onObjectPointerDown={onObjectPointerDown}
+              />
+              {/* EffectLayer mounts here in step 7 */}
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BUILT_IN_DEFINITIONS } from "../data/builtIns";
 import {
   canPlace,
+  clampGrab,
   clampGridSize,
   cellKey,
   getEffectCells,
@@ -11,6 +12,7 @@ import {
   getObjectsOutsideSize,
   getOccupiedMap,
   isInBounds,
+  pointerToCell,
 } from "../lib/grid";
 import type { Cell, FarmLayout, ObjectDefinition, PlacedObject } from "../types";
 
@@ -532,5 +534,40 @@ describe("getFootprintSize", () => {
       const { width, height } = getFootprintSize(obj, barn);
       expect(getFootprint(obj, barn)).toHaveLength(width * height);
     }
+  });
+});
+
+describe("pointerToCell", () => {
+  const origin = { left: 100, top: 50 };
+
+  it("maps a pointer to the cell it is inside", () => {
+    expect(pointerToCell(100, 50, origin, 32)).toEqual({ x: 0, y: 0 });
+    expect(pointerToCell(131, 81, origin, 32)).toEqual({ x: 0, y: 0 });
+    expect(pointerToCell(132, 82, origin, 32)).toEqual({ x: 1, y: 1 });
+    expect(pointerToCell(100 + 32 * 5 + 10, 50 + 32 * 3 + 10, origin, 32)).toEqual({ x: 5, y: 3 });
+  });
+
+  it("returns negative cells left of and above the grid", () => {
+    expect(pointerToCell(99, 49, origin, 32)).toEqual({ x: -1, y: -1 });
+    expect(pointerToCell(0, 0, origin, 32)).toEqual({ x: -4, y: -2 });
+  });
+
+  it("handles fractional cell sizes", () => {
+    expect(pointerToCell(100 + 20.5, 50, origin, 20.5)).toEqual({ x: 1, y: 0 });
+  });
+});
+
+describe("clampGrab", () => {
+  it("leaves an in-range offset alone", () => {
+    expect(clampGrab({ dx: 1, dy: 2 }, { width: 4, height: 4 })).toEqual({ dx: 1, dy: 2 });
+  });
+
+  it("pulls the offset inside a smaller (e.g. rotated) footprint", () => {
+    expect(clampGrab({ dx: 3, dy: 0 }, { width: 1, height: 2 })).toEqual({ dx: 0, dy: 0 });
+    expect(clampGrab({ dx: 0, dy: 3 }, { width: 2, height: 1 })).toEqual({ dx: 0, dy: 0 });
+  });
+
+  it("never goes negative", () => {
+    expect(clampGrab({ dx: -2, dy: -1 }, { width: 3, height: 3 })).toEqual({ dx: 0, dy: 0 });
   });
 });

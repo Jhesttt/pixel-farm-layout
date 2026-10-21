@@ -1,7 +1,12 @@
 import { nanoid } from "nanoid";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { duplicatedObjects, nudgedObjects, rotateObjects as rotateInLayout } from "../lib/edit";
+import {
+  duplicatedObjects,
+  findMisfits,
+  nudgedObjects,
+  rotateObjects as rotateInLayout,
+} from "../lib/edit";
 import { canPlace, clampGridSize, getObjectsOutsideSize } from "../lib/grid";
 import { persistedLayoutsSchema } from "../lib/schemas";
 import { createSafeStorage, envelopeValidator } from "../lib/storage";
@@ -64,6 +69,13 @@ interface LayoutState {
   updateObjects: (ids: string[], patch: ObjectPatch) => void;
   /** Copies the objects to the nearest free spot and selects the copies. Returns their ids. */
   duplicateObjects: (ids: string[], defs: ObjectDefinition[]) => string[];
+  /** Removes every placement of a definition from every layout. Returns how many were removed. */
+  removeObjectsByDef: (defId: string) => number;
+  /**
+   * After definitions change size, removes placements (in every layout) that no longer fit: out of
+   * bounds, or overlapping an earlier object. Returns how many were removed.
+   */
+  removeMisfitObjects: (defs: ObjectDefinition[]) => number;
 }
 
 interface PersistedLayouts {
@@ -250,6 +262,48 @@ export const useLayoutStore = create<LayoutState>()(
           const copyIds = copies.map((c) => c.id);
           commitObjects(layout, [...layout.objects, ...copies], copyIds);
           return copyIds;
+        },
+
+        removeObjectsByDef: (defId) => {
+          let removed = 0;
+          set((s) => {
+            const removedIds = new Set<string>();
+            const layouts = { ...s.layouts };
+            for (const layout of Object.values(s.layouts)) {
+              const doomed = layout.objects.filter((o) => o.defId === defId);
+              if (doomed.length === 0) continue;
+              doomed.forEach((o) => removedIds.add(o.id));
+              removed += doomed.length;
+              layouts[layout.id] = withObjects(
+                layout,
+                layout.objects.filter((o) => o.defId !== defId),
+              );
+            }
+            if (removed === 0) return s;
+            return { layouts, selection: s.selection.filter((id) => !removedIds.has(id)) };
+          });
+          return removed;
+        },
+
+        removeMisfitObjects: (defs) => {
+          let removed = 0;
+          set((s) => {
+            const removedIds = new Set<string>();
+            const layouts = { ...s.layouts };
+            for (const layout of Object.values(s.layouts)) {
+              const misfits = findMisfits(layout, defs);
+              if (misfits.length === 0) continue;
+              misfits.forEach((id) => removedIds.add(id));
+              removed += misfits.length;
+              layouts[layout.id] = withObjects(
+                layout,
+                layout.objects.filter((o) => !misfits.includes(o.id)),
+              );
+            }
+            if (removed === 0) return s;
+            return { layouts, selection: s.selection.filter((id) => !removedIds.has(id)) };
+          });
+          return removed;
         },
       };
     },

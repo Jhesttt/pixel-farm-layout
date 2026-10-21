@@ -1,4 +1,4 @@
-import { canPlace, getFootprintSize } from "./grid";
+import { canPlace, cellKey, getFootprint, getFootprintSize, isInBounds } from "./grid";
 import type { FarmLayout, ObjectDefinition, PlacedObject } from "../types";
 
 const DUPLICATE_SEARCH_RADIUS = 12;
@@ -103,4 +103,42 @@ export function duplicatedObjects(
     }
   }
   return null;
+}
+
+/**
+ * Objects that do not fit `layout` under `defs`: out of bounds, or overlapping an earlier object
+ * that does fit. Used after a definition's footprint changes, to find what must be removed.
+ * Objects with an unknown definition are not reported.
+ */
+export function findMisfits(layout: FarmLayout, defs: ObjectDefinition[]): string[] {
+  const defsById = new Map(defs.map((d) => [d.id, d]));
+  const occupied = new Set<string>();
+  const misfits: string[] = [];
+  for (const obj of layout.objects) {
+    const def = defsById.get(obj.defId);
+    if (!def) continue;
+    const cells = getFootprint(obj, def);
+    const fits = isInBounds(cells, layout) && cells.every((c) => !occupied.has(cellKey(c.x, c.y)));
+    if (!fits) {
+      misfits.push(obj.id);
+      continue;
+    }
+    for (const c of cells) occupied.add(cellKey(c.x, c.y));
+  }
+  return misfits;
+}
+
+/** How many objects across all layouts use the definition, and in how many layouts. */
+export function countDefinitionUse(
+  layouts: Record<string, FarmLayout>,
+  defId: string,
+): { objects: number; layouts: number } {
+  let objects = 0;
+  let inLayouts = 0;
+  for (const layout of Object.values(layouts)) {
+    const n = layout.objects.filter((o) => o.defId === defId).length;
+    objects += n;
+    if (n > 0) inLayouts++;
+  }
+  return { objects, layouts: inLayouts };
 }

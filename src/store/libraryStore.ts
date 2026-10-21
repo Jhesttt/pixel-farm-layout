@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { BUILT_IN_DEFINITIONS } from "../data/builtIns";
+import { BUILT_IN_DEFINITIONS, withBuiltInsReset } from "../data/builtIns";
 import { persistedLibrarySchema } from "../lib/schemas";
 import { createSafeStorage, envelopeValidator } from "../lib/storage";
 import type { ObjectDefinition } from "../types";
@@ -38,19 +38,20 @@ export const useLibraryStore = create<LibraryState>()(
 
       updateDefinition: (id, patch) =>
         set((s) => ({
-          definitions: s.definitions.map((d) => (d.id === id ? { ...d, ...patch } : d)),
+          definitions: s.definitions.map((d) => {
+            if (d.id !== id) return d;
+            const next = { ...d, ...patch };
+            // An explicit undefined clears an optional field rather than leaving the key behind.
+            if (next.icon === undefined) delete next.icon;
+            if (next.effect === undefined) delete next.effect;
+            return next;
+          }),
         })),
 
       deleteDefinition: (id) =>
         set((s) => ({ definitions: s.definitions.filter((d) => d.id !== id) })),
 
-      resetBuiltIns: () =>
-        set((s) => ({
-          definitions: [
-            ...BUILT_IN_DEFINITIONS,
-            ...s.definitions.filter((d) => !BUILT_IN_DEFINITIONS.some((b) => b.id === d.id)),
-          ],
-        })),
+      resetBuiltIns: () => set((s) => ({ definitions: withBuiltInsReset(s.definitions) })),
     }),
     {
       name: LIBRARY_STORAGE_KEY,

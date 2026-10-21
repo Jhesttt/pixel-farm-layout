@@ -1,3 +1,4 @@
+import { centeredOffset } from "../lib/grid.ts";
 import type { EffectDefinition, ObjectDefinition } from "../types.ts";
 
 // Effect centered on the footprint (section 3): offset = -floor((effectSize - objSize) / 2)
@@ -11,8 +12,8 @@ function centeredEffect(
   return {
     width: effectW,
     height: effectH,
-    offsetX: -Math.floor((effectW - objW) / 2),
-    offsetY: -Math.floor((effectH - objH) / 2),
+    offsetX: centeredOffset(objW, effectW),
+    offsetY: centeredOffset(objH, effectH),
     color,
     shape: "rect",
   };
@@ -46,3 +47,11 @@ export const BUILT_IN_DEFINITIONS: ObjectDefinition[] = [
   { id: "builtin-fence", name: "Fence", width: 2, height: 1, color: "#7a5640", builtIn: true },
   { id: "builtin-water", name: "Water", width: 1, height: 1, color: "#8dbbd6", builtIn: true },
 ];
+
+/** `current` with every built-in restored to its seed values (re-adding deleted ones); custom ones stay. */
+export function withBuiltInsReset(current: ObjectDefinition[]): ObjectDefinition[] {
+  return [
+    ...BUILT_IN_DEFINITIONS,
+    ...current.filter((d) => !BUILT_IN_DEFINITIONS.some((b) => b.id === d.id)),
+  ];
+}

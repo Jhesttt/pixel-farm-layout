@@ -1,4 +1,4 @@
-import type { Cell, FarmLayout, ObjectDefinition, PlacedObject } from "../types";
+import type { Cell, FarmLayout, ObjectDefinition, PlacedObject } from "../types.ts";
 
 export const GRID_MIN_SIZE = 4;
 export const GRID_MAX_SIZE = 64;
@@ -214,4 +214,9 @@ export function getCellBounds(cells: Cell[]): { x: number; y: number; width: num
     maxY = Math.max(maxY, c.y);
   }
   return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+/** Offset that centres an effect of `effectSize` on an object of `objectSize` along one axis. */
+export function centeredOffset(objectSize: number, effectSize: number): number {
+  return 0 - Math.floor((effectSize - objectSize) / 2); // 0 - n, not -n: avoids negative zero
 }

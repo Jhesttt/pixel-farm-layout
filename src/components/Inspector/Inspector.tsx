@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { MARKING_COLORS } from "../../data/markingColors";
+import { useEffect, useMemo, useRef } from "react";
 import { selectActiveLayout, useLayoutStore } from "../../store/layoutStore";
 import { useLibraryStore } from "../../store/libraryStore";
-import { labelColorFor } from "../../theme/contrast";
 import type { ObjectDefinition, PlacedObject } from "../../types";
+import ColorSwatches from "../ColorSwatches";
 import CommitInput from "../CommitInput";
 
 const iconProps = {
@@ -23,22 +22,6 @@ function Kbd({ children }: { children: string }) {
     <kbd className="rounded-[4px] border border-line bg-sunken px-1.5 text-[11px] font-semibold text-ink-soft">
       {children}
     </kbd>
-  );
-}
-
-/** Colour input that edits locally and commits when the picker closes (not on every drag). */
-function ColorField({ value, onCommit }: { value: string; onCommit: (hex: string) => void }) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
-  return (
-    <input
-      type="color"
-      aria-label="Custom colour"
-      className="h-8 w-10 cursor-pointer rounded-control border border-control-edge bg-paper p-0.5"
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => draft !== value && onCommit(draft)}
-    />
   );
 }
 
@@ -87,7 +70,6 @@ function SelectionPanel({ objects, defsById }: { objects: PlacedObject[]; defsBy
 
   const overrides = new Set(objects.map((o) => o.colorOverride ?? ""));
   const sharedOverride = overrides.size === 1 ? ([...overrides][0] as string) : null;
-  const pickerValue = sharedOverride || singleDef?.color || "#8fb07e";
 
   return (
     <>
@@ -116,43 +98,12 @@ function SelectionPanel({ objects, defsById }: { objects: PlacedObject[]; defsBy
 
       <fieldset className="flex flex-col gap-2">
         <legend className="field-label mb-1">Colour</legend>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            aria-pressed={sharedOverride === ""}
-            className={`btn btn-secondary h-8 px-3 text-xs ${sharedOverride === "" ? "outline-2 outline-offset-2 outline-primary" : ""}`}
-            onClick={() => updateObjects(ids, { colorOverride: undefined })}
-          >
-            Default
-          </button>
-          {MARKING_COLORS.map((c) => {
-            const pressed = sharedOverride === c.hex;
-            return (
-              <button
-                key={c.hex}
-                type="button"
-                aria-label={c.name}
-                aria-pressed={pressed}
-                title={c.name}
-                className={`flex h-8 w-8 items-center justify-center rounded-control ring-2 ring-inset ring-ink-deep/70 transition duration-150 ease-soft hover:scale-105 ${
-                  pressed ? "outline-[3px] outline-offset-2 outline-primary" : ""
-                }`}
-                style={{ backgroundColor: c.hex, color: labelColorFor(c.hex) }}
-                onClick={() => updateObjects(ids, { colorOverride: c.hex })}
-              >
-                {pressed && (
-                  <svg {...iconProps}>
-                    <path d="m3.5 8.5 3 3 6-7" />
-                  </svg>
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-ink-soft">
-          <ColorField value={pickerValue} onCommit={(hex) => updateObjects(ids, { colorOverride: hex })} />
-          Pick any colour
-        </div>
+        <ColorSwatches
+          value={sharedOverride}
+          allowDefault
+          fallback={singleDef?.color}
+          onChange={(hex) => updateObjects(ids, { colorOverride: hex })}
+        />
       </fieldset>
 
       <EffectToggle objects={objects} defsById={defsById} />

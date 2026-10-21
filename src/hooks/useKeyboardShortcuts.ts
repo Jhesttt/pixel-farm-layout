@@ -36,6 +36,8 @@ export function useKeyboardShortcuts() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isTypingTarget(e.target)) return;
+      // A modal (the object editor) owns the keyboard while it is open.
+      if (e.target instanceof HTMLElement && e.target.closest("dialog")) return;
 
       const store = useLayoutStore.getState();
       const defs = useLibraryStore.getState().definitions;

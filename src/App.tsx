@@ -82,7 +82,7 @@ function Workspace() {
       <Palette onItemPointerDown={startPaletteDrag} />
       <GridCanvas
         gridRef={gridRef}
-        hiddenObjectId={drag?.objectId ?? null}
+        drag={drag}
         onObjectPointerDown={onObjectPointerDown}
         onObjectActivate={onObjectActivate}
       />

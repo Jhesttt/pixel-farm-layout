@@ -5,6 +5,7 @@ import {
   clampGrab,
   clampGridSize,
   cellKey,
+  getCellBounds,
   getEffectCells,
   getEffectCoverage,
   getFootprint,
@@ -569,5 +570,26 @@ describe("clampGrab", () => {
 
   it("never goes negative", () => {
     expect(clampGrab({ dx: -2, dy: -1 }, { width: 3, height: 3 })).toEqual({ dx: 0, dy: 0 });
+  });
+});
+
+describe("getCellBounds", () => {
+  it("is null for no cells", () => {
+    expect(getCellBounds([])).toBeNull();
+  });
+
+  it("bounds a single cell", () => {
+    expect(getCellBounds([{ x: 3, y: 4 }])).toEqual({ x: 3, y: 4, width: 1, height: 1 });
+  });
+
+  it("matches a clipped effect rectangle exactly", () => {
+    const cells = getEffectCells(placed("s", scarecrow, 0, 0), scarecrow, makeLayout(15, 15));
+    expect(getCellBounds(cells)).toEqual({ x: 0, y: 0, width: 4, height: 4 });
+    expect(cells).toHaveLength(16); // the bounds contain every cell, so none are missing
+  });
+
+  it("matches a full effect rectangle", () => {
+    const cells = getEffectCells(placed("s", scarecrow, 7, 7), scarecrow, makeLayout(15, 15));
+    expect(getCellBounds(cells)).toEqual({ x: 4, y: 4, width: 7, height: 7 });
   });
 });

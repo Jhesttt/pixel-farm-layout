@@ -199,3 +199,19 @@ export function getEffectCoverage(layout: FarmLayout, defs: ObjectDefinition[]):
   }
   return coverage;
 }
+
+/** Smallest rectangle containing the cells, or null for none. Exact for a clipped rect effect. */
+export function getCellBounds(cells: Cell[]): { x: number; y: number; width: number; height: number } | null {
+  if (cells.length === 0) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const c of cells) {
+    minX = Math.min(minX, c.x);
+    minY = Math.min(minY, c.y);
+    maxX = Math.max(maxX, c.x);
+    maxY = Math.max(maxY, c.y);
+  }
+  return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}

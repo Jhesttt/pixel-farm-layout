@@ -141,6 +141,18 @@ export function labelColorFor(fill: string): string {
   return contrastRatio(LABEL_INK, fill) >= contrastRatio(LABEL_PAPER, fill) ? LABEL_INK : LABEL_PAPER;
 }
 
+/**
+ * The outline / pattern colour for an effect of colour `fill`: the fill pulled toward the label ink
+ * so it stays at least 3:1 against the board whatever colour the user picked.
+ */
+export function effectEdgeColor(fill: string): string {
+  const [r, g, b] = channels(fill);
+  const [ir, ig, ib] = channels(LABEL_INK);
+  const mix = (a: number, i: number) => Math.round(a * 0.4 + i * 0.6);
+  const hex = (n: number) => n.toString(16).padStart(2, "0");
+  return `#${hex(mix(r, ir))}${hex(mix(g, ig))}${hex(mix(b, ib))}`;
+}
+
 /** The label colour a renderer should draw on `fill`: whichever of ink-deep / paper reads better. */
 export function bestLabelColor(tokens: Tokens, fill: string): { token: string; ratio: number } {
   const options = (["ink-deep", "paper"] as const).map((token) => ({

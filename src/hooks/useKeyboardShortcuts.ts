@@ -9,11 +9,14 @@ const ARROWS: Record<string, [number, number]> = {
   ArrowDown: [0, 1],
 };
 
-function isTypingTarget(target: EventTarget | null): boolean {
+// Inputs that do not take typed text, so editor shortcuts keep working with one focused.
+const NON_TEXT_INPUTS = new Set(["checkbox", "radio", "button", "submit", "reset", "color", "range", "file"]);
+
+/** True when a key press is meant for a field (typing, or arrows moving a dropdown). */
+export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
-  );
+  if (target.isContentEditable || target.tagName === "TEXTAREA" || target.tagName === "SELECT") return true;
+  return target instanceof HTMLInputElement && !NON_TEXT_INPUTS.has(target.type);
 }
 
 /** The selected ids that still exist in the active layout. */

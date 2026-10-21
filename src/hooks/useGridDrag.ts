@@ -24,6 +24,8 @@ export interface DragState {
   x: number;
   y: number;
   valid: boolean;
+  /** Whether the pointer is over the grid (the ghost snaps to cells only then). */
+  overGrid: boolean;
   /** Fill and icon to draw on the ghost. */
   color: string;
   icon: string | undefined;
@@ -110,6 +112,7 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
         x,
         y,
         valid,
+        overGrid,
         color: session.color,
         icon: session.def.icon,
         ghost: { ...ghost, width: size.width * cellSize, height: size.height * cellSize },

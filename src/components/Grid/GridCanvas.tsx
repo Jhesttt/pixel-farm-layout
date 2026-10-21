@@ -7,6 +7,8 @@ import {
 import { useCellSize } from "../../hooks/useCellSize";
 import { selectActiveLayout, useLayoutStore } from "../../store/layoutStore";
 import NoLayoutsState from "../NoLayoutsState";
+import type { DragState } from "../../hooks/useGridDrag";
+import EffectLayer from "./EffectLayer";
 import GridLayer from "./GridLayer";
 import ObjectLayer from "./ObjectLayer";
 import type { PlacedObject } from "../../types";
@@ -18,17 +20,19 @@ const CARD_PADDING = 16; // inside the board card
 interface GridCanvasProps {
   /** Origin of cell (0, 0); the drag hook converts pointer positions against it. */
   gridRef: RefObject<HTMLDivElement>;
-  hiddenObjectId: string | null;
+  /** The drag in progress, if any: hides the dragged object and previews its effect. */
+  drag: DragState | null;
   onObjectPointerDown: (e: ReactPointerEvent<HTMLElement>, obj: PlacedObject) => void;
   onObjectActivate: (e: ReactKeyboardEvent<HTMLElement>, obj: PlacedObject) => void;
 }
 
 export default function GridCanvas({
   gridRef,
-  hiddenObjectId,
+  drag,
   onObjectPointerDown,
   onObjectActivate,
 }: GridCanvasProps) {
+  const hiddenObjectId = drag?.objectId ?? null;
   const layout = useLayoutStore(selectActiveLayout);
   const selection = useLayoutStore((s) => s.selection);
   const view = useLayoutStore((s) => s.view);
@@ -77,6 +81,18 @@ export default function GridCanvas({
                 rulerSize={RULER_SIZE}
                 showGrid={view.showGrid}
               />
+              {view.showEffects && (
+                <EffectLayer
+                  layout={layout}
+                  cellSize={cellSize}
+                  hiddenObjectId={hiddenObjectId}
+                  preview={
+                    drag?.overGrid
+                      ? { defId: drag.defId, x: drag.x, y: drag.y, rotation: drag.rotation }
+                      : null
+                  }
+                />
+              )}
               <ObjectLayer
                 objects={layout.objects}
                 cellSize={cellSize}
@@ -86,7 +102,6 @@ export default function GridCanvas({
                 onObjectPointerDown={onObjectPointerDown}
                 onObjectActivate={onObjectActivate}
               />
-              {/* EffectLayer mounts here in step 7 */}
             </div>
           </div>
         </div>

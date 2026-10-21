@@ -8,6 +8,7 @@ import {
   checkTokenPairs,
   contrastRatio,
   deltaE,
+  effectEdgeColor,
   forbiddenPairsNowPassing,
   LABEL_INK,
   LABEL_PAPER,
@@ -92,5 +93,24 @@ describe("marking colours", () => {
         expect(deltaE(c.hex, other.hex), `${c.name} vs ${other.name}`).toBeGreaterThanOrEqual(12);
       }
     }
+  });
+});
+
+describe("effectEdgeColor", () => {
+  it("keeps at least 3:1 against the board for any fill, including very light ones", () => {
+    const board = tokens["board"] as string;
+    const fills = [
+      ...BUILT_IN_DEFINITIONS.flatMap((d) => (d.effect ? [d.effect.color] : [])),
+      ...MARKING_COLORS.map((c) => c.hex),
+      "#ffffff", "#ffff00", "#00ffff", "#f5e4cf", "#000000",
+    ];
+    for (const fill of fills) {
+      expect(contrastRatio(effectEdgeColor(fill), board), fill).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("returns a valid hex colour", () => {
+    expect(effectEdgeColor("#d3756b")).toMatch(/^#[0-9a-f]{6}$/);
+    expect(effectEdgeColor("#000000")).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

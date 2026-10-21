@@ -1,0 +1,142 @@
+import type { Cell, FarmLayout, ObjectDefinition, PlacedObject } from "../types";
+
+export function cellKey(x: number, y: number): string {
+  return `${x},${y}`;
+}
+
+function indexDefinitions(defs: ObjectDefinition[]): Map<string, ObjectDefinition> {
+  return new Map(defs.map((def) => [def.id, def]));
+}
+
+function rectCells(x0: number, y0: number, width: number, height: number): Cell[] {
+  const cells: Cell[] = [];
+  for (let y = y0; y < y0 + height; y++) {
+    for (let x = x0; x < x0 + width; x++) {
+      cells.push({ x, y });
+    }
+  }
+  return cells;
+}
+
+function isInLayout(cell: Cell, layout: FarmLayout): boolean {
+  return cell.x >= 0 && cell.y >= 0 && cell.x < layout.width && cell.y < layout.height;
+}
+
+/** Cells covered by the object's footprint, in absolute grid coordinates. */
+export function getFootprint(obj: PlacedObject, def: ObjectDefinition): Cell[] {
+  const swapped = obj.rotation % 180 !== 0;
+  const [w, h] = swapped ? [def.height, def.width] : [def.width, def.height];
+  return rectCells(obj.x, obj.y, w, h);
+}
+
+/**
+ * Cells covered by the object's area of effect, in absolute grid coordinates, clipped to the
+ * layout bounds. Pure geometry: ignores `obj.showEffect`. Empty if the definition has no effect.
+ *
+ * Rotation is clockwise. The effect rect is defined relative to the unrotated footprint's
+ * top-left; rotating turns the effect rect about the footprint so it stays attached to the
+ * same side of the object (a "waters downward" sprinkler rotated 90 waters leftward).
+ */
+export function getEffectCells(
+  obj: PlacedObject,
+  def: ObjectDefinition,
+  layout: FarmLayout,
+): Cell[] {
+  const effect = def.effect;
+  if (!effect) return [];
+
+  // Effect rect in unrotated local coordinates, half-open: [x0, x1) x [y0, y1)
+  const x0 = effect.offsetX;
+  const y0 = effect.offsetY;
+  const x1 = x0 + effect.width;
+  const y1 = y0 + effect.height;
+  const { width: w, height: h } = def;
+
+  let rect: { x0: number; y0: number; x1: number; y1: number };
+  switch (obj.rotation) {
+    case 0:
+      rect = { x0, y0, x1, y1 };
+      break;
+    case 90:
+      rect = { x0: h - y1, y0: x0, x1: h - y0, y1: x1 };
+      break;
+    case 180:
+      rect = { x0: w - x1, y0: h - y1, x1: w - x0, y1: h - y0 };
+      break;
+    case 270:
+      rect = { x0: y0, y0: w - x1, x1: y1, y1: w - x0 };
+      break;
+  }
+
+  return rectCells(obj.x + rect.x0, obj.y + rect.y0, rect.x1 - rect.x0, rect.y1 - rect.y0).filter(
+    (cell) => isInLayout(cell, layout),
+  );
+}
+
+/** True if every cell lies inside the layout. Vacuously true for no cells. */
+export function isInBounds(cells: Cell[], layout: FarmLayout): boolean {
+  return cells.every((cell) => isInLayout(cell, layout));
+}
+
+function buildOccupiedMap(
+  layout: FarmLayout,
+  defsById: Map<string, ObjectDefinition>,
+  ignore?: ReadonlySet<string>,
+): Map<string, string> {
+  const occupied = new Map<string, string>();
+  for (const obj of layout.objects) {
+    if (ignore?.has(obj.id)) continue;
+    const def = defsById.get(obj.defId);
+    if (!def) continue;
+    for (const cell of getFootprint(obj, def)) {
+      occupied.set(cellKey(cell.x, cell.y), obj.id);
+    }
+  }
+  return occupied;
+}
+
+/** "x,y" -> id of the placed object whose footprint covers that cell. */
+export function getOccupiedMap(layout: FarmLayout, defs: ObjectDefinition[]): Map<string, string> {
+  return buildOccupiedMap(layout, indexDefinitions(defs));
+}
+
+/**
+ * Whether `candidate` fits: its definition exists, its footprint is inside the grid, and it does
+ * not overlap any other object's footprint. Objects in `ignoreIds` are treated as absent (pass the
+ * candidate's own id when moving an existing object). Effects never block placement.
+ */
+export function canPlace(
+  layout: FarmLayout,
+  defs: ObjectDefinition[],
+  candidate: PlacedObject,
+  ignoreIds: string[] = [],
+): boolean {
+  const defsById = indexDefinitions(defs);
+  const def = defsById.get(candidate.defId);
+  if (!def) return false;
+
+  const footprint = getFootprint(candidate, def);
+  if (!isInBounds(footprint, layout)) return false;
+
+  const occupied = buildOccupiedMap(layout, defsById, new Set(ignoreIds));
+  return footprint.every((cell) => !occupied.has(cellKey(cell.x, cell.y)));
+}
+
+/**
+ * "x,y" -> number of effects covering that cell, for heat shading. Only objects with
+ * `showEffect` set contribute, so hiding an object's effect also removes its shading.
+ */
+export function getEffectCoverage(layout: FarmLayout, defs: ObjectDefinition[]): Map<string, number> {
+  const defsById = indexDefinitions(defs);
+  const coverage = new Map<string, number>();
+  for (const obj of layout.objects) {
+    if (!obj.showEffect) continue;
+    const def = defsById.get(obj.defId);
+    if (!def) continue;
+    for (const cell of getEffectCells(obj, def, layout)) {
+      const key = cellKey(cell.x, cell.y);
+      coverage.set(key, (coverage.get(key) ?? 0) + 1);
+    }
+  }
+  return coverage;
+}

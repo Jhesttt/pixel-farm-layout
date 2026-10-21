@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { BUILT_IN_DEFINITIONS } from "../data/builtIns";
+import { FIXTURE_DEFINITIONS } from "./fixtures";
 import { useLayoutStore } from "../store/layoutStore";
 import { useLibraryStore } from "../store/libraryStore";
 import type { PlacedObject } from "../types";
 
-const defs = BUILT_IN_DEFINITIONS;
+const defs = FIXTURE_DEFINITIONS;
 const barn = (id: string, x: number, y: number): PlacedObject => ({
   id,
   defId: "builtin-barn",
@@ -116,9 +117,9 @@ describe("library store", () => {
   });
   const lib = () => useLibraryStore.getState();
 
-  it("seeds the eight built-ins", () => {
+  it("seeds the shipped built-ins", () => {
     expect(lib().definitions.map((d) => d.name)).toEqual([
-      "Crop", "Tree", "Barn", "Scarecrow", "Sprinkler", "Path", "Fence", "Water",
+      "Crop", "Crop 2×2", "Crop 4×4", "Scarecrow", "Element orb", "Water orb", "Rain orb", "Path",
     ]);
     expect(lib().definitions.every((d) => d.builtIn)).toBe(true);
   });
@@ -131,19 +132,19 @@ describe("library store", () => {
   it("updateDefinition and deleteDefinition touch only the target", () => {
     lib().updateDefinition("builtin-crop", { color: "#000000" });
     expect(lib().definitions.find((d) => d.id === "builtin-crop")?.color).toBe("#000000");
-    lib().deleteDefinition("builtin-tree");
-    expect(lib().definitions).toHaveLength(7);
+    lib().deleteDefinition("builtin-path");
+    expect(lib().definitions).toHaveLength(BUILT_IN_DEFINITIONS.length - 1);
   });
 
   it("resetBuiltIns restores edited and deleted built-ins and keeps custom ones", () => {
     const custom = lib().addDefinition({ name: "Shed", width: 3, height: 2, color: "#112233" });
     lib().updateDefinition("builtin-crop", { color: "#000000" });
-    lib().deleteDefinition("builtin-tree");
+    lib().deleteDefinition("builtin-path");
     lib().resetBuiltIns();
     expect(lib().definitions.find((d) => d.id === "builtin-crop")?.color).toBe(BUILT_IN_DEFINITIONS[0]?.color);
-    expect(lib().definitions.some((d) => d.id === "builtin-tree")).toBe(true);
+    expect(lib().definitions.some((d) => d.id === "builtin-path")).toBe(true);
     expect(lib().definitions.some((d) => d.id === custom)).toBe(true);
-    expect(lib().definitions).toHaveLength(9);
+    expect(lib().definitions).toHaveLength(BUILT_IN_DEFINITIONS.length + 1);
   });
 });
 

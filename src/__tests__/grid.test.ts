@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILT_IN_DEFINITIONS } from "../data/builtIns";
+import { FIXTURE_DEFINITIONS } from "./fixtures";
 import {
   canPlace,
   clampGrab,
@@ -18,7 +18,7 @@ import {
 import type { Cell, FarmLayout, ObjectDefinition, PlacedObject } from "../types";
 
 function def(id: string): ObjectDefinition {
-  const found = BUILT_IN_DEFINITIONS.find((d) => d.id === `builtin-${id}`);
+  const found = FIXTURE_DEFINITIONS.find((d) => d.id === `builtin-${id}`);
   if (!found) throw new Error(`no built-in ${id}`);
   return found;
 }
@@ -64,7 +64,7 @@ const wideCentered: ObjectDefinition = {
 };
 
 const defs: ObjectDefinition[] = [
-  ...BUILT_IN_DEFINITIONS,
+  ...FIXTURE_DEFINITIONS,
   downSprinkler,
   rightPointer,
   wideCentered,

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { BUILT_IN_DEFINITIONS as defs } from "../data/builtIns";
+import { BUILT_IN_DEFINITIONS } from "../data/builtIns";
+import { FIXTURE_DEFINITIONS as defs } from "./fixtures";
 import { exportAllText, exportLayoutText, importFromText } from "../store/exchange";
 import { useLayoutStore } from "../store/layoutStore";
 import { useLibraryStore } from "../store/libraryStore";
@@ -115,13 +116,14 @@ describe("export and import through the stores", () => {
 
 describe("mergeDefinitions", () => {
   it("adds only unknown ids and marks them custom, except genuine built-in ids", () => {
-    useLibraryStore.setState({ definitions: defs.filter((d) => d.id !== "builtin-tree") });
+    const seed = (id: string) => BUILT_IN_DEFINITIONS.find((d) => d.id === id)!;
+    useLibraryStore.setState({ definitions: BUILT_IN_DEFINITIONS.filter((d) => d.id !== "builtin-scarecrow") });
     const incoming: ObjectDefinition[] = [
-      { ...defs.find((d) => d.id === "builtin-tree")!, builtIn: false },
+      { ...seed("builtin-scarecrow"), builtIn: false },
       { id: "x1", name: "X", width: 1, height: 1, color: "#123456", builtIn: true },
     ];
     expect(lib().mergeDefinitions(incoming)).toBe(2);
-    expect(lib().definitions.find((d) => d.id === "builtin-tree")?.builtIn).toBe(true);
+    expect(lib().definitions.find((d) => d.id === "builtin-scarecrow")?.builtIn).toBe(true);
     expect(lib().definitions.find((d) => d.id === "x1")?.builtIn).toBe(false);
     expect(lib().mergeDefinitions(incoming)).toBe(0);
   });

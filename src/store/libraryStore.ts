@@ -1,13 +1,13 @@
 import { nanoid } from "nanoid";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { BUILT_IN_DEFINITIONS, withBuiltInsReset } from "../data/builtIns";
+import { BUILT_IN_DEFINITIONS, RETIRED_BUILTIN_IDS, withBuiltInsReset } from "../data/builtIns";
 import { persistedLibrarySchema } from "../lib/schemas";
 import { createSafeStorage, envelopeValidator } from "../lib/storage";
 import type { ObjectDefinition } from "../types";
 
 export const LIBRARY_STORAGE_KEY = "pfl:library:v1";
-const LIBRARY_VERSION = 1;
+export const LIBRARY_VERSION = 2;
 
 type NewDefinition = Omit<ObjectDefinition, "id" | "builtIn">;
 
@@ -74,9 +74,17 @@ export const useLibraryStore = create<LibraryState>()(
         createSafeStorage({ validate: envelopeValidator(persistedLibrarySchema, LIBRARY_VERSION) }),
       ),
       partialize: (s): PersistedLibrary => ({ definitions: s.definitions }),
-      // v1 is the first schema. Future versions: switch on `version` here and return the upgraded
-      // state, so a schema change never wipes saved definitions.
-      migrate: (persisted) => persisted as PersistedLibrary,
+      // Future versions: add a step here so a change never wipes saved definitions.
+      migrate: (persisted, version) => {
+        const saved = persisted as PersistedLibrary;
+        if (version < 2) {
+          // v2 changed the built-in set: drop the retired ones and bring the rest to their new seed
+          // values. Custom definitions are kept as they are.
+          const kept = saved.definitions.filter((d) => !(RETIRED_BUILTIN_IDS as readonly string[]).includes(d.id));
+          return { definitions: withBuiltInsReset(kept) };
+        }
+        return saved;
+      },
     },
   ),
 );

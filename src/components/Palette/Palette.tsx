@@ -9,6 +9,8 @@ import ObjectDefEditor from "./ObjectDefEditor";
 
 interface PaletteProps {
   onItemPointerDown: (e: ReactPointerEvent<HTMLElement>, def: ObjectDefinition) => void;
+  /** On phones the palette shares a dock with the inspector; this hides it while that is showing. */
+  hiddenOnMobile?: boolean;
 }
 
 const iconProps = {
@@ -24,7 +26,7 @@ const iconProps = {
 } as const;
 
 const iconButton =
-  "flex h-8 w-8 items-center justify-center rounded-control text-ink-soft transition duration-150 ease-soft hover:bg-wash hover:text-ink";
+  "flex h-9 w-9 items-center justify-center rounded-control text-ink-soft transition duration-150 ease-soft hover:bg-wash hover:text-ink md:h-8 md:w-8";
 
 interface ItemProps {
   def: ObjectDefinition;
@@ -33,50 +35,59 @@ interface ItemProps {
   onDelete: (def: ObjectDefinition) => void;
 }
 
+/**
+ * One object. On phones it is a tile in a sideways-scrolling strip: touch-action is pan-x, so a
+ * horizontal swipe scrolls the strip while a vertical drag lifts the object toward the board. On
+ * larger screens it is a row in a vertical list.
+ */
 function PaletteItem({ def, onPointerDown, onEdit, onDelete }: ItemProps) {
   return (
-    <li className="flex items-center rounded-control transition duration-150 ease-soft hover:bg-wash">
+    <li className="flex w-28 shrink-0 flex-col rounded-control transition duration-150 ease-soft hover:bg-wash md:w-auto md:flex-row md:items-center">
       <button
         type="button"
         aria-label={`${def.name}, ${def.width} by ${def.height}. Drag onto the grid.`}
-        className="flex min-w-0 flex-1 cursor-grab touch-none items-center gap-3 rounded-control px-2 py-2 text-left select-none active:cursor-grabbing"
+        className="flex min-w-0 cursor-grab touch-pan-x flex-col items-center gap-1 rounded-control px-2 py-2 text-center select-none active:cursor-grabbing md:flex-1 md:touch-none md:flex-row md:gap-3 md:text-left"
         onPointerDown={(e) => onPointerDown(e, def)}
       >
         <span
           aria-hidden
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] text-lg leading-none ring-2 ring-inset ring-ink-deep/70"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] text-xl leading-none ring-2 ring-inset ring-ink-deep/70 md:h-9 md:w-9 md:text-lg"
           style={{ backgroundColor: def.color, color: labelColorFor(def.color) }}
         >
           {def.icon}
         </span>
-        <span className="min-w-0 flex-1">
+        <span className="max-w-full min-w-0 md:flex-1">
           <span className="block truncate font-semibold">{def.name}</span>
           <span className="block truncate text-xs text-ink-soft tabular-nums">
-            {def.width} × {def.height}
-            {def.effect ? ` · reach ${def.effect.width} × ${def.effect.height}` : ""}
+            {def.width}×{def.height}
+            {def.effect ? ` · reach ${def.effect.width}×${def.effect.height}` : ""}
           </span>
         </span>
       </button>
-      <button type="button" aria-label={`Edit ${def.name}`} title="Edit" className={iconButton} onClick={() => onEdit(def)}>
-        <svg {...iconProps}>
-          <path d="M2.5 13.5v-2.6l7.8-7.8 2.6 2.6-7.8 7.8h-2.6ZM9 4.4l2.6 2.6" />
-        </svg>
-      </button>
-      <button type="button" aria-label={`Delete ${def.name}`} title="Delete" className={`${iconButton} mr-1`} onClick={() => onDelete(def)}>
-        <svg {...iconProps}>
-          <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8h5.8l.6-8" />
-        </svg>
-      </button>
+      <div className="flex justify-center md:contents">
+        <button type="button" aria-label={`Edit ${def.name}`} title="Edit" className={iconButton} onClick={() => onEdit(def)}>
+          <svg {...iconProps}>
+            <path d="M2.5 13.5v-2.6l7.8-7.8 2.6 2.6-7.8 7.8h-2.6ZM9 4.4l2.6 2.6" />
+          </svg>
+        </button>
+        <button type="button" aria-label={`Delete ${def.name}`} title="Delete" className={`${iconButton} md:mr-1`} onClick={() => onDelete(def)}>
+          <svg {...iconProps}>
+            <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8h5.8l.6-8" />
+          </svg>
+        </button>
+      </div>
     </li>
   );
 }
 
+/** A titled list on desktop. On phones the groups run together in one sideways strip, so no title. */
 function Group({ title, defs, ...rest }: { title: string; defs: ObjectDefinition[] } & Omit<ItemProps, "def">) {
   if (defs.length === 0) return null;
   return (
-    <section>
-      <h3 className="field-label mb-1 px-2">{title}</h3>
-      <ul className="flex flex-col gap-0.5">
+    <section className="flex shrink-0 gap-1 md:block md:shrink">
+      {/* sr-only is absolutely positioned; the strip is `relative` so it clips it instead of widening the page */}
+      <h3 className="field-label mb-1 px-2 max-md:sr-only">{title}</h3>
+      <ul className="flex gap-1 md:flex-col md:gap-0.5">
         {defs.map((def) => (
           <PaletteItem key={def.id} def={def} {...rest} />
         ))}
@@ -86,7 +97,7 @@ function Group({ title, defs, ...rest }: { title: string; defs: ObjectDefinition
 }
 
 /** The objects you can drag onto the grid, grouped as built-in and custom, with a definition editor. */
-export default function Palette({ onItemPointerDown }: PaletteProps) {
+export default function Palette({ onItemPointerDown, hiddenOnMobile = false }: PaletteProps) {
   const definitions = useLibraryStore((s) => s.definitions);
   const deleteDefinition = useLibraryStore((s) => s.deleteDefinition);
   const resetBuiltIns = useLibraryStore((s) => s.resetBuiltIns);
@@ -129,21 +140,26 @@ export default function Palette({ onItemPointerDown }: PaletteProps) {
   return (
     <aside
       aria-label="Object palette"
-      className="flex max-h-56 shrink-0 flex-col gap-4 overflow-y-auto border-b border-line bg-paper p-3 md:max-h-none md:w-64 md:border-r md:border-b-0"
+      className={`${hiddenOnMobile ? "hidden" : "flex"} min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 md:order-1 md:flex md:w-64 md:flex-none md:shrink-0 md:gap-4 md:border-r md:border-line md:bg-paper`}
     >
-      <div className="px-2">
-        <h2 className="text-lg font-semibold">Objects</h2>
-        <p className="text-xs text-ink-soft">Drag onto the grid. Press R while dragging to rotate.</p>
+      <div className="flex items-center justify-between gap-2 px-2 md:block">
+        <div>
+          <h2 className="text-lg font-semibold">Objects</h2>
+          <p className="hidden text-xs text-ink-soft md:block">Drag onto the grid. Press R while dragging to rotate.</p>
+          <p className="text-xs text-ink-soft md:hidden">Drag an object up onto the grid.</p>
+        </div>
+        <button type="button" className="btn btn-primary md:mt-3 md:w-full" onClick={() => setEditing("new")}>
+          <svg {...iconProps}>
+            <path d="M8 3v10M3 8h10" />
+          </svg>
+          New object
+        </button>
       </div>
-      <button type="button" className="btn btn-primary" onClick={() => setEditing("new")}>
-        <svg {...iconProps}>
-          <path d="M8 3v10M3 8h10" />
-        </svg>
-        New object
-      </button>
-      <Group title="Built-in" defs={builtIn} onPointerDown={onItemPointerDown} onEdit={setEditing} onDelete={requestDelete} />
-      <Group title="Custom" defs={custom} onPointerDown={onItemPointerDown} onEdit={setEditing} onDelete={requestDelete} />
-      <button type="button" className="btn btn-secondary mt-auto" onClick={requestReset}>
+      <div className="relative flex gap-3 overflow-x-auto pb-1 md:flex-col md:gap-4 md:overflow-visible md:pb-0">
+        <Group title="Built-in" defs={builtIn} onPointerDown={onItemPointerDown} onEdit={setEditing} onDelete={requestDelete} />
+        <Group title="Custom" defs={custom} onPointerDown={onItemPointerDown} onEdit={setEditing} onDelete={requestDelete} />
+      </div>
+      <button type="button" className="btn btn-secondary md:mt-auto" onClick={requestReset}>
         Reset built-ins
       </button>
 

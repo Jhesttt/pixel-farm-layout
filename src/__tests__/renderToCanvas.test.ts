@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUILT_IN_DEFINITIONS as defs } from "../data/builtIns";
+import { FIXTURE_DEFINITIONS as defs } from "./fixtures";
 import {
   MAX_EXPORT_PIXELS,
   canvasToPngBlob,

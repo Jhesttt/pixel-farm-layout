@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { BUILT_IN_DEFINITIONS as defs } from "../data/builtIns";
+import { FIXTURE_DEFINITIONS as defs } from "./fixtures";
 import { HISTORY_LIMIT, useLayoutStore } from "../store/layoutStore";
 import type { PlacedObject } from "../types";
 

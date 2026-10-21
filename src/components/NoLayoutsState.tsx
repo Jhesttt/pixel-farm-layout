@@ -7,7 +7,7 @@ export default function NoLayoutsState() {
   const createLayout = useLayoutStore((s) => s.createLayout);
 
   return (
-    <div className="flex flex-1 items-center justify-center p-6">
+    <div className="order-1 flex min-h-0 flex-1 items-center justify-center p-6 md:order-2">
       <section className="panel flex max-w-md flex-col items-center gap-4 px-8 py-10 text-center">
         <svg
           aria-hidden

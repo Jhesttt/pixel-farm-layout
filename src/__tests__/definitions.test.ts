@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { BUILT_IN_DEFINITIONS as defs, withBuiltInsReset } from "../data/builtIns";
+import { BUILT_IN_DEFINITIONS as SEEDS, withBuiltInsReset } from "../data/builtIns";
+import { FIXTURE_DEFINITIONS as defs } from "./fixtures";
 import { countDefinitionUse, findMisfits } from "../lib/edit";
 import { centeredOffset } from "../lib/grid";
 import { useLayoutStore } from "../store/layoutStore";
@@ -42,13 +43,13 @@ describe("withBuiltInsReset", () => {
   it("restores edited and deleted built-ins and keeps custom definitions", () => {
     const custom = { id: "custom-1", name: "Shed", width: 3, height: 2, color: "#112233", builtIn: false };
     const mangled = [
-      ...defs.filter((d) => d.id !== "builtin-tree").map((d) => (d.id === "builtin-crop" ? { ...d, color: "#000000" } : d)),
+      ...SEEDS.filter((d) => d.id !== "builtin-path").map((d) => (d.id === "builtin-crop" ? { ...d, color: "#000000" } : d)),
       custom,
     ];
     const reset = withBuiltInsReset(mangled);
-    expect(reset).toHaveLength(defs.length + 1);
-    expect(reset.find((d) => d.id === "builtin-crop")?.color).toBe(defs[0]?.color);
-    expect(reset.some((d) => d.id === "builtin-tree")).toBe(true);
+    expect(reset).toHaveLength(SEEDS.length + 1);
+    expect(reset.find((d) => d.id === "builtin-crop")?.color).toBe(SEEDS[0]?.color);
+    expect(reset.some((d) => d.id === "builtin-path")).toBe(true);
     expect(reset.at(-1)).toEqual(custom);
   });
 });

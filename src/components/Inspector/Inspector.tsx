@@ -142,7 +142,7 @@ function LayoutPanel({ defsById }: { defsById: Map<string, ObjectDefinition> }) 
   const counts = useMemo(() => {
     const tally = new Map<string, number>();
     for (const o of layout?.objects ?? []) tally.set(o.defId, (tally.get(o.defId) ?? 0) + 1);
-    return [...tally.entries()].map(([defId, n]) => ({ name: defsById.get(defId)?.name ?? "Unknown", n }));
+    return [...tally.entries()].map(([defId, n]) => ({ defId, name: defsById.get(defId)?.name ?? "Unknown", n }));
   }, [layout?.objects, defsById]);
 
   const toggles: { key: keyof typeof view; label: string }[] = [
@@ -180,7 +180,7 @@ function LayoutPanel({ defsById }: { defsById: Map<string, ObjectDefinition> }) 
         ) : (
           <ul className="flex flex-col gap-0.5 tabular-nums">
             {counts.map((c) => (
-              <li key={c.name} className="flex justify-between">
+              <li key={c.defId} className="flex justify-between">
                 <span>{c.name}</span>
                 <span className="text-ink-soft">{c.n}</span>
               </li>
@@ -193,7 +193,7 @@ function LayoutPanel({ defsById }: { defsById: Map<string, ObjectDefinition> }) 
 }
 
 /** Edits the selection; with nothing selected, shows layout display settings and a tally. */
-export default function Inspector() {
+export default function Inspector({ hiddenOnMobile = false }: { hiddenOnMobile?: boolean }) {
   const layout = useLayoutStore(selectActiveLayout);
   const selection = useLayoutStore((s) => s.selection);
   const definitions = useLibraryStore((s) => s.definitions);
@@ -207,7 +207,7 @@ export default function Inspector() {
   return (
     <aside
       aria-label="Inspector"
-      className="flex max-h-[28rem] shrink-0 flex-col gap-5 overflow-y-auto border-t border-line bg-paper p-4 md:max-h-none md:w-72 md:border-t-0 md:border-l"
+      className={`${hiddenOnMobile ? "hidden" : "flex"} min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 md:order-3 md:flex md:w-72 md:flex-none md:shrink-0 md:border-l md:border-line md:bg-paper`}
     >
       {selected.length > 0 ? (
         <SelectionPanel objects={selected} defsById={defsById} />

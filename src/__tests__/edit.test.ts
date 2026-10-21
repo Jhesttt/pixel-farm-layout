@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILT_IN_DEFINITIONS as defs } from "../data/builtIns";
+import { FIXTURE_DEFINITIONS as defs } from "./fixtures";
 import { duplicatedObjects, nudgedObjects, rotatedObject, rotateObjects } from "../lib/edit";
 import type { FarmLayout, PlacedObject } from "../types";
 

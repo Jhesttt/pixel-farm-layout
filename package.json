@@ -1,5 +1,6 @@
 {
   "name": "pixel-farm-layout",
+  "description": "A client-only planner for grid-based pixel-farm layouts",
   "private": true,
   "version": "0.0.0",
   "type": "module",

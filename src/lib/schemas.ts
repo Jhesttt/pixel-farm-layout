@@ -7,11 +7,10 @@ import type {
   PlacedObject,
 } from "../types";
 
-export const MIN_GRID_SIZE = 4;
-export const MAX_GRID_SIZE = 64;
+import { GRID_MAX_SIZE, GRID_MIN_SIZE } from "./grid";
 
 const hexColor = z.string().regex(/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/);
-const cellCount = z.number().int().min(1).max(MAX_GRID_SIZE);
+const cellCount = z.number().int().min(1).max(GRID_MAX_SIZE);
 
 export const cellSchema = z.object({
   x: z.number().int(),
@@ -53,12 +52,26 @@ export const placedObjectSchema = z.object({
 export const farmLayoutSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
-  width: z.number().int().min(MIN_GRID_SIZE).max(MAX_GRID_SIZE),
-  height: z.number().int().min(MIN_GRID_SIZE).max(MAX_GRID_SIZE),
+  width: z.number().int().min(GRID_MIN_SIZE).max(GRID_MAX_SIZE),
+  height: z.number().int().min(GRID_MIN_SIZE).max(GRID_MAX_SIZE),
   objects: z.array(placedObjectSchema),
   createdAt: z.number(),
   updatedAt: z.number(),
   schemaVersion: z.literal(1),
+});
+
+// Shape of what zustand `persist` writes to LocalStorage.
+export const persistedLayoutsSchema = z.object({
+  state: z.object({
+    layouts: z.record(z.string(), farmLayoutSchema),
+    activeLayoutId: z.string().nullable(),
+  }),
+  version: z.number(),
+});
+
+export const persistedLibrarySchema = z.object({
+  state: z.object({ definitions: z.array(objectDefinitionSchema) }),
+  version: z.number(),
 });
 
 // Compile-time guard: each schema must infer exactly the type in types.ts.

@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { BUILT_IN_DEFINITIONS } from "../data/builtIns";
 import {
   canPlace,
+  clampGridSize,
   cellKey,
   getEffectCells,
   getEffectCoverage,
   getFootprint,
+  getObjectsOutsideSize,
   getOccupiedMap,
   isInBounds,
 } from "../lib/grid";
@@ -460,5 +462,54 @@ describe("getEffectCoverage", () => {
   it("skips objects whose definition is missing", () => {
     const layout = makeLayout(10, 10, [{ ...placed("x", sprinkler, 3, 3), defId: "gone" }]);
     expect(getEffectCoverage(layout, defs).size).toBe(0);
+  });
+});
+
+describe("clampGridSize", () => {
+  it("passes through valid sizes", () => {
+    expect(clampGridSize(4)).toBe(4);
+    expect(clampGridSize(17)).toBe(17);
+    expect(clampGridSize(64)).toBe(64);
+  });
+
+  it("clamps to 4..64 and rounds", () => {
+    expect(clampGridSize(0)).toBe(4);
+    expect(clampGridSize(-5)).toBe(4);
+    expect(clampGridSize(65)).toBe(64);
+    expect(clampGridSize(16.6)).toBe(17);
+  });
+
+  it("maps non-finite input to the minimum", () => {
+    expect(clampGridSize(NaN)).toBe(4);
+    expect(clampGridSize(Infinity)).toBe(4);
+  });
+});
+
+describe("getObjectsOutsideSize", () => {
+  const layout = makeLayout(16, 16, [
+    placed("a", barn, 0, 0),
+    placed("b", barn, 8, 8),
+    placed("c", fence, 10, 14, 90), // occupies (10,14),(10,15)
+    { ...placed("d", crop, 15, 15), defId: "gone" },
+  ]);
+  const ids = (w: number, h: number) => getObjectsOutsideSize(layout, defs, w, h).map((o) => o.id);
+
+  it("reports nothing when everything still fits", () => {
+    expect(ids(16, 16)).toEqual([]);
+    expect(ids(20, 20)).toEqual([]);
+  });
+
+  it("reports objects whose footprint crosses the new edge, not just their origin", () => {
+    expect(ids(11, 16)).toEqual(["b"]); // b spans x 8..11
+    expect(ids(12, 16)).toEqual([]);
+    expect(ids(16, 15)).toEqual(["c"]); // c's second cell is y=15
+  });
+
+  it("uses the rotated footprint", () => {
+    expect(ids(11, 14)).toEqual(["b", "c"]);
+  });
+
+  it("does not report objects with an unknown definition", () => {
+    expect(ids(4, 4)).not.toContain("d");
   });
 });

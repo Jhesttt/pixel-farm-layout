@@ -1,5 +1,14 @@
 import type { Cell, FarmLayout, ObjectDefinition, PlacedObject } from "../types";
 
+export const GRID_MIN_SIZE = 4;
+export const GRID_MAX_SIZE = 64;
+
+/** Rounds to an integer within GRID_MIN_SIZE..GRID_MAX_SIZE; non-finite input becomes the minimum. */
+export function clampGridSize(n: number): number {
+  if (!Number.isFinite(n)) return GRID_MIN_SIZE;
+  return Math.min(GRID_MAX_SIZE, Math.max(GRID_MIN_SIZE, Math.round(n)));
+}
+
 export function cellKey(x: number, y: number): string {
   return `${x},${y}`;
 }
@@ -120,6 +129,24 @@ export function canPlace(
 
   const occupied = buildOccupiedMap(layout, defsById, new Set(ignoreIds));
   return footprint.every((cell) => !occupied.has(cellKey(cell.x, cell.y)));
+}
+
+/**
+ * Placed objects whose footprint would not fit a `width` x `height` grid, i.e. what resizing the
+ * layout to that size would drop. Objects with an unknown definition are not reported.
+ */
+export function getObjectsOutsideSize(
+  layout: FarmLayout,
+  defs: ObjectDefinition[],
+  width: number,
+  height: number,
+): PlacedObject[] {
+  const defsById = indexDefinitions(defs);
+  const resized = { ...layout, width, height };
+  return layout.objects.filter((obj) => {
+    const def = defsById.get(obj.defId);
+    return def !== undefined && !isInBounds(getFootprint(obj, def), resized);
+  });
 }
 
 /**

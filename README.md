@@ -9,6 +9,7 @@ browser's LocalStorage.
 ## Features
 
 - **Grids from 4×4 to 64×64.** The size menu offers 15×15, 17×17, 19×19, 21×21, 23×23, 25×25 and 27×27; any other size can be typed in.
+- **Top and isometric views.** Switch the board between a straight-down grid and an isometric view like the game's, with blocks standing on the ground and their icons on top. Everything works in both views: place, move, rotate, select, and drag off the board to delete. The isometric view can be zoomed, and dragging empty ground pans it.
 - **Drag and drop** from the palette, and move objects around the grid. Rotate while dragging with **R**.
 - **Areas of effect.** A scarecrow covers 15×15, an element orb 13×13, a rain orb 7×7, a water orb 5×5. The areas are clipped at the grid edge, and where several overlap they stack, with a count where three or more do.
 - **Built-in objects:** Crop (1×1, 2×2 and 4×4), Scarecrow, Element orb, Water orb, Rain orb and Path. All can be edited, deleted or restored with **Reset built-ins**.
@@ -30,7 +31,8 @@ browser's LocalStorage.
 | **Ctrl+Z**, **Ctrl+Shift+Z** | Undo, redo |
 | **New object** in the palette | Create your own object |
 | **Layouts** | Manage layouts, import JSON, or export a backup of all of them |
-| **Export** | Download a PNG or JSON of the open layout |
+| **Top / Isometric** above the board | Switch how the board is drawn (your choice is remembered) |
+| **Export** | Download a PNG or JSON of the open layout. The PNG is always the top view |
 
 Your layouts live only in this browser. Use **Layouts → Export all** now and then to keep a backup,
 especially before clearing browser data.

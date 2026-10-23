@@ -145,7 +145,7 @@ function LayoutPanel({ defsById }: { defsById: Map<string, ObjectDefinition> }) 
     return [...tally.entries()].map(([defId, n]) => ({ defId, name: defsById.get(defId)?.name ?? "Unknown", n }));
   }, [layout?.objects, defsById]);
 
-  const toggles: { key: keyof typeof view; label: string }[] = [
+  const toggles: { key: "showGrid" | "showLabels" | "showEffects"; label: string }[] = [
     { key: "showGrid", label: "Show grid lines" },
     { key: "showLabels", label: "Show labels" },
     { key: "showEffects", label: "Show areas of effect" },

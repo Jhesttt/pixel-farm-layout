@@ -62,6 +62,8 @@ export const farmLayoutSchema = z.object({
 });
 
 export const viewSettingsSchema = z.object({
+  // Added after the first release of the view settings; older saves default to the top view.
+  projection: z.enum(["top", "iso"]).default("top"),
   showGrid: z.boolean(),
   showLabels: z.boolean(),
   showEffects: z.boolean(),

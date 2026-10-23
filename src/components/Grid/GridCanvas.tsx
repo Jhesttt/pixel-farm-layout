@@ -1,16 +1,20 @@
 import {
   useRef,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
+import type { BoardMapper } from "../../hooks/boardMapper";
 import { useCellSize } from "../../hooks/useCellSize";
 import { PHONE_QUERY, useMediaQuery } from "../../hooks/useMediaQuery";
 import { selectActiveLayout, useLayoutStore } from "../../store/layoutStore";
 import NoLayoutsState from "../NoLayoutsState";
 import type { DragState } from "../../hooks/useGridDrag";
+import BoardHeader from "./BoardHeader";
 import EffectLayer from "./EffectLayer";
 import GridLayer from "./GridLayer";
+import IsoCanvas from "./IsoCanvas";
 import ObjectLayer from "./ObjectLayer";
 import type { PlacedObject } from "../../types";
 
@@ -25,13 +29,16 @@ interface GridCanvasProps {
   gridRef: RefObject<HTMLDivElement>;
   /** The drag in progress, if any: hides the dragged object and previews its effect. */
   drag: DragState | null;
-  onObjectPointerDown: (e: ReactPointerEvent<HTMLElement>, obj: PlacedObject) => void;
-  onObjectActivate: (e: ReactKeyboardEvent<HTMLElement>, obj: PlacedObject) => void;
+  /** The isometric board registers its pointer-to-cell mapping here (the top board uses gridRef). */
+  isoMapperRef: MutableRefObject<BoardMapper | null>;
+  onObjectPointerDown: (e: ReactPointerEvent<Element>, obj: PlacedObject) => void;
+  onObjectActivate: (e: ReactKeyboardEvent<Element>, obj: PlacedObject) => void;
 }
 
 export default function GridCanvas({
   gridRef,
   drag,
+  isoMapperRef,
   onObjectPointerDown,
   onObjectActivate,
 }: GridCanvasProps) {
@@ -50,6 +57,17 @@ export default function GridCanvas({
   );
 
   if (!layout) return <NoLayoutsState />;
+  if (view.projection === "iso") {
+    return (
+      <IsoCanvas
+        layout={layout}
+        drag={drag}
+        mapperRef={isoMapperRef}
+        onObjectPointerDown={onObjectPointerDown}
+        onObjectActivate={onObjectActivate}
+      />
+    );
+  }
 
   const pixelWidth = layout.width * cellSize;
   const pixelHeight = layout.height * cellSize;
@@ -63,12 +81,7 @@ export default function GridCanvas({
       style={{ padding: PADDING }}
     >
       <div className="mx-auto" style={{ width: cardWidth }}>
-        <div className="mb-3 flex items-baseline justify-between gap-4">
-          <h2 className="truncate text-lg font-semibold md:text-xl">{layout.name}</h2>
-          <p className="shrink-0 text-ink-soft tabular-nums">
-            {layout.width} × {layout.height} tiles
-          </p>
-        </div>
+        <BoardHeader layout={layout} />
         <div className="rounded-card bg-paper shadow-soft" style={{ padding: CARD_PADDING }}>
           <div
             className="relative"

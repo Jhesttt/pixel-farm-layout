@@ -9,6 +9,9 @@ export const EXPORT_THEME = {
   gridLineMajor: "#6f4f42",
   inkDeep: "#2a1616",
   inkSoft: "#6a4a46",
+  primary: "#a75d5d",
+  sageDeep: "#3e6a4b",
+  negative: "#9b2c2c",
   /** --color-ink-deep at 70%: the ring around every object. */
   objectEdge: "rgba(42, 22, 22, 0.7)",
   /** --color-ink-deep at 40%: the outline of a count badge. */
@@ -25,6 +28,9 @@ export const EXPORT_THEME_TOKENS: Record<string, keyof typeof EXPORT_THEME> = {
   "grid-line-major": "gridLineMajor",
   "ink-deep": "inkDeep",
   "ink-soft": "inkSoft",
+  primary: "primary",
+  "sage-deep": "sageDeep",
+  negative: "negative",
 };
 
 export const EXPORT_FONT = '"Nunito Sans", ui-sans-serif, system-ui, "Segoe UI", sans-serif';

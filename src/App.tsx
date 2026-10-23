@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import DragGhost from "./components/Grid/DragGhost";
 import GridCanvas from "./components/Grid/GridCanvas";
 import Inspector from "./components/Inspector/Inspector";
 import Palette from "./components/Palette/Palette";
+import { createTopMapper, type BoardMapper } from "./hooks/boardMapper";
 import { useGridDrag } from "./hooks/useGridDrag";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import TopBar from "./components/TopBar";
 import { onStorageError, type StorageErrorEvent } from "./lib/storage";
-import { useLayoutStore } from "./store/layoutStore";
+import { selectActiveLayout, useLayoutStore } from "./store/layoutStore";
 import { removeRetiredPlacements } from "./store/retired";
 import type { PlacedObject } from "./types";
 
@@ -60,14 +61,23 @@ type DockTab = "objects" | "edit";
 
 function Workspace() {
   const gridRef = useRef<HTMLDivElement>(null);
+  const isoMapperRef = useRef<BoardMapper | null>(null);
+  const projection = useLayoutStore((s) => s.view.projection);
   // Phones show one panel at a time under the board; larger screens show both beside it.
   const [dockTab, setDockTab] = useState<DockTab>("objects");
   const selectionCount = useLayoutStore((s) => s.selection.length);
-  const { drag, startPaletteDrag, startObjectDrag } = useGridDrag(gridRef);
+  // Whichever board is on screen turns pointer positions into cells; read fresh on every event.
+  const getMapper = useCallback((): BoardMapper | null => {
+    const state = useLayoutStore.getState();
+    if (state.view.projection === "iso") return isoMapperRef.current;
+    const layout = selectActiveLayout(state);
+    return gridRef.current && layout ? createTopMapper(gridRef.current, layout.width) : null;
+  }, []);
+  const { drag, startPaletteDrag, startObjectDrag } = useGridDrag(getMapper);
   useKeyboardShortcuts();
 
   // Pressing an object selects it (Shift/Ctrl/Cmd toggles it in or out), then may start a drag.
-  const onObjectPointerDown = (e: ReactPointerEvent<HTMLElement>, obj: PlacedObject) => {
+  const onObjectPointerDown = (e: ReactPointerEvent<Element>, obj: PlacedObject) => {
     const { setSelection, toggleSelected } = useLayoutStore.getState();
     if (e.shiftKey || e.ctrlKey || e.metaKey) {
       e.preventDefault();
@@ -79,7 +89,7 @@ function Workspace() {
     startObjectDrag(e, obj);
   };
 
-  const onObjectActivate = (e: ReactKeyboardEvent<HTMLElement>, obj: PlacedObject) => {
+  const onObjectActivate = (e: ReactKeyboardEvent<Element>, obj: PlacedObject) => {
     if (e.key !== "Enter" && e.key !== " ") return;
     e.preventDefault();
     const { setSelection, toggleSelected } = useLayoutStore.getState();
@@ -98,6 +108,7 @@ function Workspace() {
       <GridCanvas
         gridRef={gridRef}
         drag={drag}
+        isoMapperRef={isoMapperRef}
         onObjectPointerDown={onObjectPointerDown}
         onObjectActivate={onObjectActivate}
       />
@@ -122,7 +133,8 @@ function Workspace() {
         <Palette onItemPointerDown={startPaletteDrag} hiddenOnMobile={dockTab !== "objects"} />
         <Inspector hiddenOnMobile={dockTab !== "edit"} />
       </div>
-      <DragGhost drag={drag} />
+      {/* The isometric board draws its own ghost while over it; this one covers everything else. */}
+      <DragGhost drag={projection === "top" || !drag?.overGrid ? drag : null} />
     </main>
   );
 }

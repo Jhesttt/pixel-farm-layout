@@ -14,6 +14,7 @@ import {
   LABEL_PAPER,
   labelColorFor,
   parseTokens,
+  shadeColor,
 } from "../theme/contrast";
 
 // Vitest does not hand CSS imports through (even with ?raw), so read the file directly.
@@ -112,5 +113,27 @@ describe("effectEdgeColor", () => {
   it("returns a valid hex colour", () => {
     expect(effectEdgeColor("#d3756b")).toMatch(/^#[0-9a-f]{6}$/);
     expect(effectEdgeColor("#000000")).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe("shadeColor", () => {
+  it("keeps the colour at 0, reaches the label ink at 1, and clamps outside that range", () => {
+    expect(shadeColor("#8fb07e", 0)).toBe("#8fb07e");
+    expect(shadeColor("#8fb07e", 1)).toBe(LABEL_INK);
+    expect(shadeColor("#8fb07e", -3)).toBe("#8fb07e");
+    expect(shadeColor("#8fb07e", 9)).toBe(LABEL_INK);
+  });
+
+  it("gets darker as the amount grows", () => {
+    const lum = (hex: string) => contrastRatio(hex, "#ffffff");
+    const light = lum("#d6e8b0");
+    const mid = lum(shadeColor("#d6e8b0", 0.25));
+    const dark = lum(shadeColor("#d6e8b0", 0.5));
+    expect(mid).toBeGreaterThan(light); // darker means more contrast with white
+    expect(dark).toBeGreaterThan(mid);
+  });
+
+  it("returns a valid hex colour", () => {
+    expect(shadeColor("#ffffff", 0.3)).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

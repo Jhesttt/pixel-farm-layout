@@ -370,9 +370,9 @@ describe("selection and editing actions", () => {
   });
 
   it("setView merges display toggles and defaults all on", () => {
-    expect(get().view).toEqual({ showGrid: true, showLabels: true, showEffects: true });
+    expect(get().view).toEqual({ projection: "top", showGrid: true, showLabels: true, showEffects: true });
     get().setView({ showGrid: false });
-    expect(get().view).toEqual({ showGrid: false, showLabels: true, showEffects: true });
+    expect(get().view).toEqual({ projection: "top", showGrid: false, showLabels: true, showEffects: true });
     get().setView({ showGrid: true });
   });
 });

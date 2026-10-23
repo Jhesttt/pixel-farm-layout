@@ -1,21 +1,14 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-  type RefObject,
-} from "react";
-import { canPlace, classifyPointer, clampGrab, getFootprintSize, pointerToCell } from "../lib/grid";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { canPlace, clampGrab, getFootprintSize } from "../lib/grid";
 import { selectActiveLayout, useLayoutStore } from "../store/layoutStore";
 import { useLibraryStore } from "../store/libraryStore";
 import type { ObjectDefinition, PlacedObject } from "../types";
+import type { BoardMapper } from "./boardMapper";
+
+export { DELETE_MARGIN_PX } from "./boardMapper";
 
 /** Pointer travel before a press becomes a drag, so plain clicks stay clicks. */
 const DRAG_THRESHOLD_PX = 4;
-
-/** Dragging a placed object this far (or more) off the board deletes it; closer just cancels. */
-export const DELETE_MARGIN_PX = 16;
 
 export interface DragState {
   kind: "palette" | "grid";
@@ -70,44 +63,43 @@ function probeFor(session: Session): PlacedObject {
  * (moves it). Press, move past a small threshold, release over a valid spot to commit; Escape
  * cancels and R rotates the ghost while dragging.
  *
- * `gridRef` must be the element whose top-left is cell (0, 0) and whose width is the grid width.
+ * `getMapper` returns the board currently on screen (top or isometric), which turns pointer
+ * positions into cells. It is read on every pointer event, so switching boards mid-session works.
  */
-export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
+export function useGridDrag(getMapper: () => BoardMapper | null) {
   const [drag, setDrag] = useState<DragState | null>(null);
   const sessionRef = useRef<Session | null>(null);
   const teardownRef = useRef<(() => void) | null>(null);
 
   const evaluate = useCallback(
     (session: Session): DragState | null => {
-      const grid = gridRef.current;
+      const mapper = getMapper();
       const layout = selectActiveLayout(useLayoutStore.getState());
-      if (!grid || !layout) return null;
+      if (!mapper || !layout) return null;
 
       const defs = useLibraryStore.getState().definitions;
-      const rect = grid.getBoundingClientRect();
-      const cellSize = rect.width / layout.width;
+      const cellSize = mapper.cellSize;
       const probe = probeFor(session);
       const size = getFootprintSize(probe, session.def);
 
-      // The board is the visible part of the grid; the grid can extend under other panels.
-      const scroller = grid.closest("[data-board-scroller]")?.getBoundingClientRect() ?? null;
-      const zone = classifyPointer({ x: session.lastX, y: session.lastY }, rect, scroller, DELETE_MARGIN_PX);
+      const { cell, zone } = mapper.locate(session.lastX, session.lastY);
       const overGrid = zone === "over";
       const deleting = session.kind === "grid" && zone === "away";
-      const cell = pointerToCell(session.lastX, session.lastY, rect, cellSize);
       const x = cell.x - session.grab.dx;
       const y = cell.y - session.grab.dy;
       const valid =
         overGrid &&
         canPlace(layout, defs, { ...probe, x, y }, session.objectId ? [session.objectId] : []);
 
-      // On the grid the ghost snaps to cells; off it, it follows the pointer freely.
-      const ghost = overGrid
-        ? { left: rect.left + x * cellSize, top: rect.top + y * cellSize }
-        : {
-            left: session.lastX - (session.grab.dx + 0.5) * cellSize,
-            top: session.lastY - (session.grab.dy + 0.5) * cellSize,
-          };
+      // On an axis-aligned board the ghost snaps to cells; otherwise (off the board, or on a board
+      // that draws its own ghost) it follows the pointer freely.
+      const snapped = overGrid ? mapper.snapRect?.(x, y, size.width, size.height) : undefined;
+      const ghost = snapped ?? {
+        left: session.lastX - (session.grab.dx + 0.5) * cellSize,
+        top: session.lastY - (session.grab.dy + 0.5) * cellSize,
+        width: size.width * cellSize,
+        height: size.height * cellSize,
+      };
 
       return {
         kind: session.kind,
@@ -121,15 +113,15 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
         deleting,
         color: session.color,
         icon: session.def.icon,
-        ghost: { ...ghost, width: size.width * cellSize, height: size.height * cellSize },
+        ghost,
       };
     },
-    [gridRef],
+    [getMapper],
   );
 
   const begin = useCallback(
     (
-      e: ReactPointerEvent<HTMLElement>,
+      e: ReactPointerEvent<Element>,
       init: Pick<Session, "kind" | "def" | "objectId" | "color" | "rotation" | "grab">,
     ) => {
       if (e.button !== 0 || sessionRef.current) return;
@@ -242,7 +234,7 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
   );
 
   const startPaletteDrag = useCallback(
-    (e: ReactPointerEvent<HTMLElement>, def: ObjectDefinition) => {
+    (e: ReactPointerEvent<Element>, def: ObjectDefinition) => {
       // Hold the middle of the footprint, as if the object were picked up by its centre.
       const grab = {
         dx: Math.floor(def.width / 2),
@@ -254,14 +246,13 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
   );
 
   const startObjectDrag = useCallback(
-    (e: ReactPointerEvent<HTMLElement>, obj: PlacedObject) => {
-      const grid = gridRef.current;
+    (e: ReactPointerEvent<Element>, obj: PlacedObject) => {
+      const mapper = getMapper();
       const layout = selectActiveLayout(useLayoutStore.getState());
       const def = useLibraryStore.getState().definitions.find((d) => d.id === obj.defId);
-      if (!grid || !layout || !def) return;
+      if (!mapper || !layout || !def) return;
 
-      const rect = grid.getBoundingClientRect();
-      const cell = pointerToCell(e.clientX, e.clientY, rect, rect.width / layout.width);
+      const { cell } = mapper.locate(e.clientX, e.clientY);
       const grab = clampGrab(
         { dx: cell.x - obj.x, dy: cell.y - obj.y },
         getFootprintSize(obj, def),
@@ -275,7 +266,7 @@ export function useGridDrag(gridRef: RefObject<HTMLElement | null>) {
         grab,
       });
     },
-    [begin, gridRef],
+    [begin, getMapper],
   );
 
   // Abandon any drag in progress if the owner unmounts.

@@ -48,6 +48,8 @@ export interface FarmLayout {
 
 // Editor display toggles shared by every layout (not part of a saved layout).
 export interface ViewSettings {
+  /** How the board is drawn: straight down ("top") or isometric ("iso"). */
+  projection: "top" | "iso";
   showGrid: boolean;
   showLabels: boolean;
   showEffects: boolean;

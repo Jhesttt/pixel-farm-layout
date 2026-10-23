@@ -18,7 +18,12 @@ const LAYOUTS_VERSION = 1;
 /** The fields of a placed object a user edits in the inspector. */
 export type ObjectPatch = Partial<Pick<PlacedObject, "label" | "colorOverride" | "showEffect">>;
 
-export const DEFAULT_VIEW: ViewSettings = { showGrid: true, showLabels: true, showEffects: true };
+export const DEFAULT_VIEW: ViewSettings = {
+  projection: "top",
+  showGrid: true,
+  showLabels: true,
+  showEffects: true,
+};
 
 export const HISTORY_LIMIT = 50;
 

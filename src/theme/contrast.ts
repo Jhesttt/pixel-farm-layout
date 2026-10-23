@@ -188,3 +188,16 @@ export function checkObjectColors(tokens: Tokens, defs: ObjectDefinition[]): Obj
   }
   return { labels, tooClose };
 }
+
+/**
+ * `hex` mixed toward the label ink by `inkAmount` (0 keeps it, 1 is the ink): a darker shade of the
+ * same colour, used for the side faces of isometric blocks.
+ */
+export function shadeColor(hex: string, inkAmount: number): string {
+  const t = Math.min(1, Math.max(0, inkAmount));
+  const [r, g, b] = channels(hex);
+  const [ir, ig, ib] = channels(LABEL_INK);
+  const mix = (c: number, i: number) => Math.round(c * (1 - t) + i * t);
+  const toHex = (n: number) => n.toString(16).padStart(2, "0");
+  return `#${toHex(mix(r, ir))}${toHex(mix(g, ig))}${toHex(mix(b, ib))}`;
+}

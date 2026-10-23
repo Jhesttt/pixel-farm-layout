@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FIXTURE_DEFINITIONS as defs } from "./fixtures";
+import { RecordingContext } from "./recordingContext";
 import {
   MAX_EXPORT_PIXELS,
   canvasToPngBlob,
@@ -17,69 +18,6 @@ import { EXPORT_THEME, EXPORT_THEME_TOKENS } from "../theme/exportTheme";
 import { parseTokens } from "../theme/contrast";
 import type { FarmLayout, PlacedObject } from "../types";
 
-interface Call {
-  op: string;
-  args: unknown[];
-  fillStyle: string;
-  strokeStyle: string;
-  lineWidth: number;
-  globalAlpha: number;
-  font: string;
-}
-
-/** A 2D context that records every call with the style in force at that moment. */
-class RecordingContext {
-  calls: Call[] = [];
-  fillStyle = "#000000";
-  strokeStyle = "#000000";
-  lineWidth = 1;
-  globalAlpha = 1;
-  font = "10px sans-serif";
-  textAlign: CanvasTextAlign = "start";
-  textBaseline: CanvasTextBaseline = "alphabetic";
-
-  private record(op: string, args: unknown[]) {
-    this.calls.push({
-      op,
-      args,
-      fillStyle: this.fillStyle,
-      strokeStyle: this.strokeStyle,
-      lineWidth: this.lineWidth,
-      globalAlpha: this.globalAlpha,
-      font: this.font,
-    });
-  }
-  save = () => this.record("save", []);
-  restore = () => this.record("restore", []);
-  beginPath = () => this.record("beginPath", []);
-  closePath = () => this.record("closePath", []);
-  moveTo = (...a: unknown[]) => this.record("moveTo", a);
-  lineTo = (...a: unknown[]) => this.record("lineTo", a);
-  arcTo = (...a: unknown[]) => this.record("arcTo", a);
-  arc = (...a: unknown[]) => this.record("arc", a);
-  rect = (...a: unknown[]) => this.record("rect", a);
-  clip = () => this.record("clip", []);
-  fill = () => this.record("fill", []);
-  stroke = () => this.record("stroke", []);
-  fillRect = (...a: unknown[]) => this.record("fillRect", a);
-  strokeRect = (...a: unknown[]) => this.record("strokeRect", a);
-  fillText = (...a: unknown[]) => this.record("fillText", a);
-  setLineDash = (...a: unknown[]) => this.record("setLineDash", a);
-  measureText = (text: string) => {
-    const px = Number(/(\d+(?:\.\d+)?)px/.exec(this.font)?.[1] ?? 10);
-    return { width: text.length * px * 0.6 } as TextMetrics;
-  };
-
-  of(op: string) {
-    return this.calls.filter((c) => c.op === op);
-  }
-  texts() {
-    return this.of("fillText").map((c) => String(c.args[0]));
-  }
-  indexOf(predicate: (c: Call) => boolean) {
-    return this.calls.findIndex(predicate);
-  }
-}
 
 const OPTIONS: RenderOptions = {
   cellSize: 32,

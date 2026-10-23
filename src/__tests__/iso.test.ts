@@ -70,6 +70,14 @@ describe("isoScene", () => {
     expect(v.originY).toBeGreaterThan(40); // room above the top corner
   });
 
+  it("always has whole-pixel dimensions, even for odd tiles", () => {
+    for (const tile of [13, 17, 33, 47, 48, 95]) {
+      const { width, height } = isoScene(21, 17, tile, 8);
+      expect(Number.isInteger(width), `width at tile ${tile}`).toBe(true);
+      expect(Number.isInteger(height), `height at tile ${tile}`).toBe(true);
+    }
+  });
+
   it("grows with the tile size", () => {
     const small = isoScene(15, 15, 20, 8);
     const big = isoScene(15, 15, 40, 8);

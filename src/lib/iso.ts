@@ -56,8 +56,9 @@ export function isoScene(
 ): { width: number; height: number; view: IsoView } {
   const headroom = tile * ISO_HEADROOM_RATIO;
   return {
-    width: ((cols + rows) * tile) / 2 + 2 * padding,
-    height: ((cols + rows) * tile) / 4 + headroom + 2 * padding,
+    // whole pixels: a canvas or SVG of this size cannot have a fractional edge
+    width: Math.ceil(((cols + rows) * tile) / 2 + 2 * padding),
+    height: Math.ceil(((cols + rows) * tile) / 4 + headroom + 2 * padding),
     view: { tile, originX: padding + (rows * tile) / 2, originY: padding + headroom },
   };
 }

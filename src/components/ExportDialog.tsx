@@ -11,6 +11,7 @@ import { exportLayoutText } from "../store/exchange";
 import { selectActiveLayout, useLayoutStore } from "../store/layoutStore";
 import { useLibraryStore } from "../store/libraryStore";
 import { EXPORT_THEME } from "../theme/exportTheme";
+import type { ViewSettings } from "../types";
 import { downloadBlob, downloadText } from "./download";
 
 const BASE_CELL = 32; // 1x: a 17x17 grid is 544px wide
@@ -35,7 +36,19 @@ const OPTION_TOGGLES = [
 
 type ToggleKey = (typeof OPTION_TOGGLES)[number]["key"];
 
-/** Modal for exporting the open layout as a PNG (1x / 2x / 4x) or as JSON. */
+const VIEWS: { key: ViewSettings["projection"]; label: string }[] = [
+  { key: "top", label: "Top view" },
+  { key: "iso", label: "Isometric" },
+];
+
+/** Cell size for the preview so it lands near PREVIEW_MAX_PX across, for either view. */
+function previewCell(cols: number, rows: number, projection: ViewSettings["projection"]): number {
+  // An isometric image is (cols + rows) * 0.75 cells wide at this export's 1.5 tile per cell.
+  const across = projection === "iso" ? (cols + rows) * 0.75 : Math.max(cols, rows);
+  return Math.max(6, Math.min(28, Math.floor(PREVIEW_MAX_PX / across)));
+}
+
+/** Modal for exporting the open layout as a PNG (top or isometric, 1x / 2x / 4x) or as JSON. */
 export default function ExportDialog({ onClose }: { onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -43,6 +56,8 @@ export default function ExportDialog({ onClose }: { onClose: () => void }) {
   const view = useLayoutStore((s) => s.view);
   const definitions = useLibraryStore((s) => s.definitions);
 
+  // Start from the view you are looking at.
+  const [projection, setProjection] = useState<ViewSettings["projection"]>(view.projection);
   const [scale, setScale] = useState<(typeof SCALES)[number]>(1);
   const [background, setBackground] = useState<BackgroundKey>("cream");
   const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({
@@ -64,6 +79,7 @@ export default function ExportDialog({ onClose }: { onClose: () => void }) {
     ...toggles,
     background: BACKGROUNDS.find((b) => b.key === background)?.color ?? null,
     padding: Math.round(cellSize * 0.5),
+    projection,
   });
 
   const scaleInfo = layout
@@ -87,14 +103,14 @@ export default function ExportDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const host = previewRef.current;
     if (!host || !layout) return;
-    const cell = Math.max(6, Math.min(28, Math.floor(PREVIEW_MAX_PX / Math.max(layout.width, layout.height))));
+    const cell = previewCell(layout.width, layout.height, projection);
     const canvas = renderLayoutToCanvas(layout, definitions, optionsFor(cell));
     canvas.style.maxWidth = "100%";
     canvas.style.height = "auto";
     canvas.setAttribute("role", "img");
     canvas.setAttribute("aria-label", `Preview of ${layout.name}`);
     host.replaceChildren(canvas);
-  }, [layout, definitions, toggles, background]);
+  }, [layout, definitions, toggles, background, projection]);
 
   if (!layout) return null;
 
@@ -108,7 +124,10 @@ export default function ExportDialog({ onClose }: { onClose: () => void }) {
       await document.fonts?.ready;
       const canvas = renderLayoutToCanvas(layout, definitions, optionsFor(BASE_CELL * scale));
       const blob = await canvasToPngBlob(canvas);
-      downloadBlob(exportFileName(layout.name, layout.width, layout.height, "png"), blob);
+      downloadBlob(
+        exportFileName(layout.name, layout.width, layout.height, "png", projection === "iso" ? "isometric" : undefined),
+        blob,
+      );
       close();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong while creating the image.");
@@ -139,6 +158,25 @@ export default function ExportDialog({ onClose }: { onClose: () => void }) {
 
         <div className="grid gap-6 md:grid-cols-[1fr_minmax(0,18rem)]">
           <div className="flex flex-col gap-5">
+            <fieldset className="flex flex-col gap-2">
+              <legend className="field-label mb-1">View</legend>
+              <div role="group" aria-label="Image view" className="inline-flex self-start overflow-hidden rounded-control border border-control-edge bg-paper">
+                {VIEWS.map((v) => (
+                  <button
+                    key={v.key}
+                    type="button"
+                    aria-pressed={projection === v.key}
+                    className={`h-9 px-4 text-sm font-semibold transition duration-150 ease-soft focus-visible:outline-offset-[-3px] ${
+                      projection === v.key ? "bg-primary text-on-primary" : "text-ink hover:bg-wash"
+                    }`}
+                    onClick={() => setProjection(v.key)}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
             <fieldset className="flex flex-col gap-2">
               <legend className="field-label mb-1">Size</legend>
               {scaleInfo.map(({ scale: s, size, fits }) => (

@@ -1,4 +1,5 @@
 import { EFFECT_FILL_ALPHA, MIN_STACK_FOR_COUNT, effectPatternIndex } from "./effectStyle";
+import { drawIsoLayout, isoExportSize } from "./renderIso";
 import { getCellBounds, getEffectCells, getEffectCoverage, getFootprintSize } from "./grid";
 import { EXPORT_EMOJI_FONT, EXPORT_FONT, EXPORT_THEME as T } from "../theme/exportTheme";
 import { effectEdgeColor, labelColorFor } from "../theme/contrast";
@@ -15,14 +16,16 @@ export interface RenderOptions {
   background: string | null;
   /** Space around the board, in pixels. */
   padding: number;
+  /** How the board is drawn. Defaults to "top"; "iso" gives the isometric view (a larger tile per cell). */
+  projection?: "top" | "iso";
 }
 
 /** The part of CanvasRenderingContext2D the renderer uses, so it can be driven by a test double. */
 export type DrawContext = Pick<
   CanvasRenderingContext2D,
-  | "save" | "restore" | "beginPath" | "closePath" | "moveTo" | "lineTo" | "arcTo" | "arc" | "rect"
+  | "save" | "restore" | "beginPath" | "closePath" | "moveTo" | "lineTo" | "arcTo" | "arc" | "ellipse" | "rect"
   | "clip" | "fill" | "stroke" | "fillRect" | "strokeRect" | "fillText" | "measureText" | "setLineDash"
-  | "fillStyle" | "strokeStyle" | "lineWidth" | "globalAlpha" | "font" | "textAlign" | "textBaseline"
+  | "fillStyle" | "strokeStyle" | "lineWidth" | "lineJoin" | "globalAlpha" | "font" | "textAlign" | "textBaseline"
 >;
 
 /** Largest export, in pixels: what every mainstream browser can allocate (16.7M is Safari's cap). */
@@ -37,6 +40,7 @@ function rulerSize(o: RenderOptions): number {
 
 /** Output size in pixels for a layout under these options. */
 export function exportSize(layout: FarmLayout, o: RenderOptions): { width: number; height: number } {
+  if (o.projection === "iso") return isoExportSize(layout, o);
   const ruler = rulerSize(o);
   return {
     width: 2 * o.padding + ruler + layout.width * o.cellSize,
@@ -283,6 +287,10 @@ export function drawLayout(
   defs: ObjectDefinition[],
   o: RenderOptions,
 ): void {
+  if (o.projection === "iso") {
+    drawIsoLayout(ctx, layout, defs, o);
+    return;
+  }
   const { width: totalW, height: totalH } = exportSize(layout, o);
   const ox = o.padding + rulerSize(o);
   const oy = ox;

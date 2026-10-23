@@ -74,15 +74,18 @@ export default function GridCanvas({
   const cardWidth = CARD_PADDING * 2 + RULER_SIZE + pixelWidth;
 
   return (
-    <div
-      ref={containerRef}
-      data-board-scroller
-      className="order-1 min-h-0 flex-1 overflow-auto md:order-2"
-      style={{ padding: PADDING }}
-    >
-      <div className="mx-auto" style={{ width: cardWidth }}>
+    <section className="order-1 flex min-h-0 flex-1 flex-col md:order-2">
+      {/* The header stays put; only the board below it scrolls. */}
+      <div style={{ padding: `${PADDING}px ${PADDING}px 12px` }}>
         <BoardHeader layout={layout} />
-        <div className="rounded-card bg-paper shadow-soft" style={{ padding: CARD_PADDING }}>
+      </div>
+      <div
+        ref={containerRef}
+        data-board-scroller
+        className="min-h-0 flex-1 overflow-auto"
+        style={{ padding: `0 ${PADDING}px ${PADDING}px` }}
+      >
+        <div className="mx-auto rounded-card bg-paper shadow-soft" style={{ width: cardWidth, padding: CARD_PADDING }}>
           <div
             className="relative"
             style={{ width: RULER_SIZE + pixelWidth, height: RULER_SIZE + pixelHeight }}
@@ -129,6 +132,6 @@ export default function GridCanvas({
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

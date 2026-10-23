@@ -114,6 +114,16 @@
     color: var(--color-ink-faint);
   }
 
+  /*
+   * The board sizes itself from this container's width. If its scrollbar came and went with the
+   * board's height, the width would change, which resizes the board, which toggles the scrollbar
+   * again: a flicker loop (seen at 1920px wide). Reserving the gutter, on both sides to stay
+   * centred, keeps the width the same either way.
+   */
+  [data-board-scroller] {
+    scrollbar-gutter: stable both-edges;
+  }
+
   /* Warm, slim scrollbars */
   * {
     scrollbar-width: thin;
